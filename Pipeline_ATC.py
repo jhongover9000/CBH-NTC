@@ -8,6 +8,7 @@ import keras
 from mne.io import read_epochs_eeglab
 from mne import Epochs, find_events
 from sklearn.model_selection import train_test_split
+import tensorflow.keras.backend as K
 
 set_dir = './epoched/'
 
@@ -31,10 +32,10 @@ for n in sub_vmi:
 
 # Load and preprocess .set files
 subject_files = {
-    'group1': files_kmi,  # Group 1
-    'group2': files_vmi,  # Group 2
+    'KMI': files_kmi,  # Group 1
+    'VMI': files_vmi,  # Group 2
 }
-group_labels = {'group1': 0, 'group2': 1}
+group_labels = {'KMI': 0, 'VMI': 1}
 
 all_data = []
 all_labels = []
@@ -43,11 +44,14 @@ for group, files in subject_files.items():
     group_label = group_labels[group]
     for file in files:
         epochs = read_epochs_eeglab(file)
+        epochs = epochs.resample(200, verbose = True)
+        epochs = epochs.crop(0,3,True,False)
         # events = find_events(raw)
         # event_id = {'specific_event': group_label}
         # epochs = Epochs(raw, events, event_id, tmin=-0.2, tmax=0.8, baseline=(None, 0), preload=True)
 
         # Append data and labels
+        print(len(epochs))
         all_data.append(epochs.get_data())  # Shape: (n_epochs, n_channels, n_times)
         all_labels.append(np.full(len(epochs), group_label))
 
@@ -63,6 +67,10 @@ print("Done Preprocessing Subjects.")
 from sklearn.model_selection import StratifiedKFold
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 from sklearn.metrics import classification_report, confusion_matrix
+from keras.models import Sequential
+from keras.layers import Dense
+from keras import backend as K
+import keras
 import numpy as np
 
 print("Starting")
@@ -82,7 +90,8 @@ lr = 0.00005
 w_decay = 0.01
 
 
-opt_atc = keras.optimizers.Adam(learning_rate = lr, weight_decay = w_decay)
+opt_atc = keras.optimizers.Adam(learning_rate = lr)
+
 
 for train_index, test_index in skf.split(X, y):
     print(f"Processing Fold {fold_number}...")
@@ -100,10 +109,13 @@ for train_index, test_index in skf.split(X, y):
     model.compile(optimizer=opt_atc, 
                   loss='sparse_categorical_crossentropy', 
                   metrics=['accuracy'])
+    
+    print("Learning rate before first fit:", model.optimizer.learning_rate.numpy())
+    
 
     # Callbacks for training
     callbacks = [
-        #EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True),
+        EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True),
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=0.00005),
         ModelCheckpoint(f'best_model_fold_{fold_number}.weights.h5', monitor='val_loss', save_best_only=True, save_weights_only=True)
     ]
@@ -119,7 +131,7 @@ for train_index, test_index in skf.split(X, y):
     )
 
     # Evaluate the model on the test set
-    scores = model.evaluate(X_test, y_test, verbose=0)
+    scores = model.evaluate(X_test, y_test, verbose=1)
     print(f"Fold {fold_number} - Loss: {scores[0]}, Accuracy: {scores[1]}")
 
     # Track metrics
