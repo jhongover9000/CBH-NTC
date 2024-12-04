@@ -4,6 +4,7 @@
 # Label Subjects
 import numpy as np
 import atc
+import keras
 from mne.io import read_epochs_eeglab
 from mne import Epochs, find_events
 from sklearn.model_selection import train_test_split
@@ -77,6 +78,12 @@ loss_per_fold = []
 
 fold_number = 1
 
+lr = 0.00005
+w_decay = 0.01
+
+
+opt_atc = keras.optimizers.Adam(learning_rate = lr, weight_decay = w_decay)
+
 for train_index, test_index in skf.split(X, y):
     print(f"Processing Fold {fold_number}...")
     
@@ -90,15 +97,15 @@ for train_index, test_index in skf.split(X, y):
     model = atc.ATCNet(input_shape=input_shape, nb_classes=nb_classes)
 
     # Compile the model
-    model.compile(optimizer='adam', 
+    model.compile(optimizer=opt_atc, 
                   loss='sparse_categorical_crossentropy', 
                   metrics=['accuracy'])
 
     # Callbacks for training
     callbacks = [
-        EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True),
-        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-6),
-        ModelCheckpoint(f'best_model_fold_{fold_number}.h5', monitor='val_loss', save_best_only=True)
+        #EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True),
+        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=0.00005),
+        ModelCheckpoint(f'best_model_fold_{fold_number}.weights.h5', monitor='val_loss', save_best_only=True, save_weights_only=True)
     ]
 
     # Train the model
