@@ -1,96 +1,85 @@
-# This file may be used to create an environment using:
-# $ conda create --name <env> --file <this file>
-# platform: win-64
-absl-py=2.1.0=pypi_0
-asttokens=2.0.5=pyhd3eb1b0_0
-astunparse=1.6.3=pypi_0
-backcall=0.2.0=pyhd3eb1b0_0
-ca-certificates=2024.11.26=haa95532_0
-certifi=2024.8.30=pypi_0
-charset-normalizer=3.4.0=pypi_0
-cloudpickle=3.1.0=pypi_0
-colorama=0.4.6=py39haa95532_0
-contourpy=1.3.0=pypi_0
-cycler=0.12.1=pypi_0
-decorator=5.1.1=pyhd3eb1b0_0
-exceptiongroup=1.2.0=py39haa95532_0
-executing=0.8.3=pyhd3eb1b0_0
-flatbuffers=24.3.25=pypi_0
-fonttools=4.55.0=pypi_0
-gast=0.6.0=pypi_0
-google-pasta=0.2.0=pypi_0
-grpcio=1.68.0=pypi_0
-h5py=3.12.1=pypi_0
-idna=3.10=pypi_0
-importlib-metadata=8.5.0=pypi_0
-importlib-resources=6.4.5=pypi_0
-ipython=8.15.0=py39haa95532_0
-jedi=0.19.1=py39haa95532_0
-jinja2=3.1.4=pypi_0
-joblib=1.4.2=pypi_0
-keras=3.7.0=pypi_0
-kiwisolver=1.4.7=pypi_0
-lazy-loader=0.4=pypi_0
-libclang=18.1.1=pypi_0
-llvmlite=0.43.0=pypi_0
-markdown=3.7=pypi_0
-markdown-it-py=3.0.0=pypi_0
-markupsafe=3.0.2=pypi_0
-mat73=0.65=pypi_0
-matplotlib=3.9.2=pypi_0
-matplotlib-inline=0.1.6=py39haa95532_0
-mdurl=0.1.2=pypi_0
-ml-dtypes=0.4.1=pypi_0
-mne=1.8.0=pypi_0
-namex=0.0.8=pypi_0
-numba=0.60.0=pypi_0
-numpy=2.0.2=pypi_0
-openssl=3.0.15=h827c3e9_0
-opt-einsum=3.4.0=pypi_0
-optree=0.13.1=pypi_0
-packaging=24.2=pypi_0
-pandas=2.2.3=pypi_0
-parso=0.8.3=pyhd3eb1b0_0
-pickleshare=0.7.5=pyhd3eb1b0_1003
-pillow=11.0.0=pypi_0
-pip=24.2=py39haa95532_0
-platformdirs=4.3.6=pypi_0
-pooch=1.8.2=pypi_0
-prompt-toolkit=3.0.43=py39haa95532_0
-protobuf=5.29.0=pypi_0
-pure_eval=0.2.2=pyhd3eb1b0_0
-pygments=2.15.1=py39haa95532_1
-pyparsing=3.2.0=pypi_0
-python=3.9.20=h8205438_1
-python-dateutil=2.9.0.post0=pypi_0
-pytz=2024.2=pypi_0
-requests=2.32.3=pypi_0
-rich=13.9.4=pypi_0
-scikit-learn=1.5.2=pypi_0
-scipy=1.13.1=pypi_0
-seaborn=0.13.2=pypi_0
-setuptools=75.1.0=py39haa95532_0
-shap=0.46.0=pypi_0
-six=1.16.0=pyhd3eb1b0_1
-slicer=0.0.8=pypi_0
-sqlite=3.45.3=h2bbff1b_0
-stack_data=0.2.0=pyhd3eb1b0_0
-tensorboard=2.18.0=pypi_0
-tensorboard-data-server=0.7.2=pypi_0
-tensorflow=2.18.0=pypi_0
-tensorflow-intel=2.18.0=pypi_0
-tensorflow-io-gcs-filesystem=0.31.0=pypi_0
-termcolor=2.5.0=pypi_0
-threadpoolctl=3.5.0=pypi_0
-tqdm=4.67.1=pypi_0
-traitlets=5.14.3=py39haa95532_0
-typing_extensions=4.11.0=py39haa95532_0
-tzdata=2024.2=pypi_0
-urllib3=2.2.3=pypi_0
-vc=14.40=h2eaa2aa_1
-vs2015_runtime=14.40.33807=h98bb1dd_1
-wcwidth=0.2.5=pyhd3eb1b0_0
-werkzeug=3.1.3=pypi_0
-wheel=0.44.0=py39haa95532_0
-wrapt=1.17.0=pypi_0
-zipp=3.21.0=pypi_0
+absl-py==2.1.0
+asttokens @ file:///opt/conda/conda-bld/asttokens_1646925590279/work
+astunparse==1.6.3
+backcall @ file:///home/ktietz/src/ci/backcall_1611930011877/work
+certifi==2024.8.30
+charset-normalizer==3.4.0
+cloudpickle==3.1.0
+colorama @ file:///C:/b/abs_a9ozq0l032/croot/colorama_1672387194846/work
+contourpy==1.3.0
+cycler==0.12.1
+decorator @ file:///opt/conda/conda-bld/decorator_1643638310831/work
+exceptiongroup @ file:///C:/b/abs_c5h1o1_b5b/croot/exceptiongroup_1706031441653/work
+executing @ file:///opt/conda/conda-bld/executing_1646925071911/work
+flatbuffers==24.3.25
+fonttools==4.55.0
+gast==0.6.0
+google-pasta==0.2.0
+grpcio==1.68.0
+h5py==3.12.1
+idna==3.10
+importlib_metadata==8.5.0
+importlib_resources==6.4.5
+ipython @ file:///C:/b/abs_e5729i179y/croot/ipython_1694181400005/work
+jedi @ file:///C:/b/abs_1b8kmj7rrm/croot/jedi_1721058359741/work
+Jinja2==3.1.4
+joblib==1.4.2
+keras==3.7.0
+kiwisolver==1.4.7
+lazy_loader==0.4
+libclang==18.1.1
+llvmlite==0.43.0
+Markdown==3.7
+markdown-it-py==3.0.0
+MarkupSafe==3.0.2
+mat73==0.65
+matplotlib==3.9.2
+matplotlib-inline @ file:///C:/ci/matplotlib-inline_1661915841596/work
+mdurl==0.1.2
+ml-dtypes==0.4.1
+mne==1.8.0
+namex==0.0.8
+numba==0.60.0
+numpy==2.0.2
+opt_einsum==3.4.0
+optree==0.13.1
+packaging==24.2
+pandas==2.2.3
+parso @ file:///opt/conda/conda-bld/parso_1641458642106/work
+pickleshare @ file:///tmp/build/80754af9/pickleshare_1606932040724/work
+pillow==11.0.0
+platformdirs==4.3.6
+pooch==1.8.2
+prompt-toolkit @ file:///C:/b/abs_68uwr58ed1/croot/prompt-toolkit_1704404394082/work
+protobuf==5.29.0
+pure-eval @ file:///opt/conda/conda-bld/pure_eval_1646925070566/work
+Pygments @ file:///C:/b/abs_fay9dpq4n_/croot/pygments_1684279990574/work
+pyparsing==3.2.0
+python-dateutil==2.9.0.post0
+pytz==2024.2
+requests==2.32.3
+rich==13.9.4
+scikit-learn==1.5.2
+scipy==1.13.1
+seaborn==0.13.2
+shap==0.46.0
+six @ file:///tmp/build/80754af9/six_1644875935023/work
+slicer==0.0.8
+stack-data @ file:///opt/conda/conda-bld/stack_data_1646927590127/work
+tensorboard==2.18.0
+tensorboard-data-server==0.7.2
+tensorflow==2.18.0
+tensorflow-io-gcs-filesystem==0.31.0
+tensorflow_intel==2.18.0
+termcolor==2.5.0
+threadpoolctl==3.5.0
+tqdm==4.67.1
+traitlets @ file:///C:/b/abs_bfsnoxl4pq/croot/traitlets_1718227069245/work
+typing_extensions @ file:///C:/b/abs_0as9mdbkfl/croot/typing_extensions_1715268906610/work
+tzdata==2024.2
+urllib3==2.2.3
+wcwidth @ file:///Users/ktietz/demo/mc3/conda-bld/wcwidth_1629357192024/work
+Werkzeug==3.1.3
+wrapt==1.17.0
+xgboost==2.1.2
+zipp==3.21.0
