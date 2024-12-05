@@ -96,7 +96,7 @@ fold_number = 1
 lr = 0.00005
 w_decay = 0.01
 
-nSub = 20 - len(indexes)  # number of subjects
+nSub = 31  # number of subjects
 bs_t = 16  # batch size
 epochs = 30
 lr = 0.00005
@@ -146,7 +146,7 @@ for train_index, test_index in skf.split(X, y):
     history_list.append(history_atc)
 
     scores_atc.append(acc_atc)
-    
+
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
 #plot accuracy history
