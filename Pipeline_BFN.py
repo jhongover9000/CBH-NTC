@@ -134,12 +134,16 @@ for train_index, test_index in skf.split(X, y):
 
     # Split the data into training and test sets for this fold
     X_train, X_test = X[train_index], X[test_index]
+    # expand dimension to match input type, (n_trials, 1, n_channels, n_timepoints)
     X_train = np.expand_dims(X_train,1)
     X_test = np.expand_dims(X_test,1)
+
+    print(np.shape(X_train))
+
     y_train, y_test = y[train_index], y[test_index]
 
     model = BFN.proposed(samples, chans, nb_classes)
-    model.load_weights('./pretrained_VR.h5')
+    model.load_weights('./pretrained_VR.h5', by_name = True, skip_mismatch = True)
 
     opt_atc = keras.optimizers.Adam(learning_rate=lr ,weight_decay=w_decay)
 
@@ -150,7 +154,14 @@ for train_index, test_index in skf.split(X, y):
 
     print("Learning rate before first fit:", model.optimizer.learning_rate.numpy())
 
-    history_atc = model.fit(X_train, y_train, validation_data = (X_test,y_test), batch_size=bs_t, epochs=epochs, verbose=0)
+    # Callbacks for training
+    callbacks = [
+        EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True),
+        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=0.00005),
+        ModelCheckpoint(f'best_model_fold_{fold_number}.weights.h5', monitor='val_loss', save_best_only=True, save_weights_only=True)
+    ]
+
+    history_atc = model.fit(X_train, y_train, validation_data = (X_test,y_test), batch_size=bs_t, epochs=epochs, callbacks = callbacks verbose=1)
     probs_atc = model.predict(X_test)
     preds_atc = probs_atc.argmax(axis=-1)
     acc_atc = np.mean(preds_atc == y_test.argmax(axis=-1))
