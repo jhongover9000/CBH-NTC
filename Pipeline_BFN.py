@@ -134,6 +134,8 @@ for train_index, test_index in skf.split(X, y):
 
     # Split the data into training and test sets for this fold
     X_train, X_test = X[train_index], X[test_index]
+    X_train = np.expand_dims(X_train,1)
+    X_test = np.expand_dims(X_test,1)
     y_train, y_test = y[train_index], y[test_index]
 
     model = BFN.proposed(samples, chans, nb_classes)
