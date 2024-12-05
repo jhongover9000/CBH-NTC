@@ -1,16 +1,16 @@
 absl-py==2.1.0
-asttokens @ file:///opt/conda/conda-bld/asttokens_1646925590279/work
+asttokens==2.0.5
 astunparse==1.6.3
-backcall @ file:///home/ktietz/src/ci/backcall_1611930011877/work
+backcall==0.2.0
 certifi==2024.8.30
 charset-normalizer==3.4.0
 cloudpickle==3.1.0
-colorama @ file:///C:/b/abs_a9ozq0l032/croot/colorama_1672387194846/work
+colorama==0.4.6
 contourpy==1.3.0
 cycler==0.12.1
-decorator @ file:///opt/conda/conda-bld/decorator_1643638310831/work
-exceptiongroup @ file:///C:/b/abs_c5h1o1_b5b/croot/exceptiongroup_1706031441653/work
-executing @ file:///opt/conda/conda-bld/executing_1646925071911/work
+decorator==5.1.1
+exceptiongroup==1.2.0
+executing==0.8.3
 flatbuffers==24.3.25
 fonttools==4.55.0
 gast==0.6.0
@@ -20,8 +20,8 @@ h5py==3.12.1
 idna==3.10
 importlib_metadata==8.5.0
 importlib_resources==6.4.5
-ipython @ file:///C:/b/abs_e5729i179y/croot/ipython_1694181400005/work
-jedi @ file:///C:/b/abs_1b8kmj7rrm/croot/jedi_1721058359741/work
+ipython==8.15.0
+jedi==0.19.1
 Jinja2==3.1.4
 joblib==1.4.2
 keras==3.7.0
@@ -34,7 +34,7 @@ markdown-it-py==3.0.0
 MarkupSafe==3.0.2
 mat73==0.65
 matplotlib==3.9.2
-matplotlib-inline @ file:///C:/ci/matplotlib-inline_1661915841596/work
+matplotlib-inline==0.1.6
 mdurl==0.1.2
 ml-dtypes==0.4.1
 mne==1.8.0
@@ -45,15 +45,16 @@ opt_einsum==3.4.0
 optree==0.13.1
 packaging==24.2
 pandas==2.2.3
-parso @ file:///opt/conda/conda-bld/parso_1641458642106/work
-pickleshare @ file:///tmp/build/80754af9/pickleshare_1606932040724/work
+parso==0.8.3
+pickleshare==0.7.5
 pillow==11.0.0
+pip==24.2
 platformdirs==4.3.6
 pooch==1.8.2
-prompt-toolkit @ file:///C:/b/abs_68uwr58ed1/croot/prompt-toolkit_1704404394082/work
+prompt-toolkit==3.0.43
 protobuf==5.29.0
-pure-eval @ file:///opt/conda/conda-bld/pure_eval_1646925070566/work
-Pygments @ file:///C:/b/abs_fay9dpq4n_/croot/pygments_1684279990574/work
+pure-eval==0.2.2
+Pygments==2.15.1
 pyparsing==3.2.0
 python-dateutil==2.9.0.post0
 pytz==2024.2
@@ -62,24 +63,26 @@ rich==13.9.4
 scikit-learn==1.5.2
 scipy==1.13.1
 seaborn==0.13.2
+setuptools==75.1.0
 shap==0.46.0
-six @ file:///tmp/build/80754af9/six_1644875935023/work
+six==1.16.0
 slicer==0.0.8
-stack-data @ file:///opt/conda/conda-bld/stack_data_1646927590127/work
+stack-data==0.2.0
 tensorboard==2.18.0
 tensorboard-data-server==0.7.2
 tensorflow==2.18.0
-tensorflow-io-gcs-filesystem==0.31.0
 tensorflow_intel==2.18.0
+tensorflow-io-gcs-filesystem==0.31.0
 termcolor==2.5.0
 threadpoolctl==3.5.0
 tqdm==4.67.1
-traitlets @ file:///C:/b/abs_bfsnoxl4pq/croot/traitlets_1718227069245/work
-typing_extensions @ file:///C:/b/abs_0as9mdbkfl/croot/typing_extensions_1715268906610/work
+traitlets==5.14.3
+typing_extensions==4.11.0
 tzdata==2024.2
 urllib3==2.2.3
-wcwidth @ file:///Users/ktietz/demo/mc3/conda-bld/wcwidth_1629357192024/work
+wcwidth==0.2.5
 Werkzeug==3.1.3
+wheel==0.44.0
 wrapt==1.17.0
 xgboost==2.1.2
 zipp==3.21.0
