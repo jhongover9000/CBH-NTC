@@ -73,6 +73,7 @@ print("Done Preprocessing Subjects.")
 # Train Model with 5 fold validation
 from sklearn.model_selection import StratifiedKFold
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, confusion_matrix
 from keras.models import Sequential
 from keras.layers import Dense
@@ -137,6 +138,10 @@ for train_index, test_index in skf.split(X, y):
     # expand dimension to match input type, (n_trials, 1, n_channels, n_timepoints)
     X_train = np.expand_dims(X_train,1)
     X_test = np.expand_dims(X_test,1)
+
+    # Normalize across trials
+    X_train = StandardScaler().fit_transform(X_train.reshape(X_train.shape[0], -1)).reshape(X_train.shape)
+    X_test = StandardScaler().fit_transform(X_test.reshape(X_test.shape[0], -1)).reshape(X_test.shape)
 
     print(np.shape(X_train))
 
