@@ -128,6 +128,7 @@ for train_index, test_index in skf.split(X, y):
     y_train, y_test = y[train_index], y[test_index]
 
     model = BFN.proposed(samples, chans, nb_classes)
+    model.load_weights('pretrained_VR.h5')
 
     opt_atc = keras.optimizers.Adam(learning_rate=lr ,weight_decay=w_decay)
 
