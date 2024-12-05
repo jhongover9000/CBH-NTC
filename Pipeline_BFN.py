@@ -39,15 +39,20 @@ group_labels = {'KMI': 0, 'VMI': 1}
 
 all_data = []
 all_labels = []
+chan2drop = ["T7","T8",'FT7','FT8']
 
 for group, files in subject_files.items():
     group_label = group_labels[group]
     for file in files:
         epochs = read_epochs_eeglab(file)
+        # drop additional channels to fit BFN
+        epochs = epochs.drop_channels(chan2drop)
+        print("Channels after dropping:", epochs.info['ch_names'])
         # downsample to 100 Hz (400 timepoints for 4 seconds)
         epochs = epochs.resample(100, verbose = True)
         # crop from -1 to 3
-        epochs = epochs.crop(-1,3,True,False)
+        epochs = epochs.crop(-1,3,False,False)
+        
 
         # Append data and labels
         print(len(epochs))
@@ -115,10 +120,14 @@ y_pred_all = []
 
 history_list=[]
 
+# tf.compat.v1.disable_eager_execution()
+# tf.compat.v1.disable_v2_behavior()
+
 # debug
 print('Comment: Test')
 model_test = BFN.proposed(samples, chans, nb_classes)
 print(model_test.summary())
+print(len(model_test.layers))
 
 
 for train_index, test_index in skf.split(X, y):
@@ -128,7 +137,7 @@ for train_index, test_index in skf.split(X, y):
     y_train, y_test = y[train_index], y[test_index]
 
     model = BFN.proposed(samples, chans, nb_classes)
-    model.load_weights('pretrained_VR.h5')
+    model.load_weights('./pretrained_VR.h5')
 
     opt_atc = keras.optimizers.Adam(learning_rate=lr ,weight_decay=w_decay)
 
