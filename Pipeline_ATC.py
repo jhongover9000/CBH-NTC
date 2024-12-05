@@ -9,6 +9,7 @@ from mne.io import read_epochs_eeglab
 from mne import Epochs, find_events
 from sklearn.model_selection import train_test_split
 import tensorflow.keras.backend as K
+import BFN
 
 set_dir = './epoched/'
 
@@ -28,8 +29,6 @@ for n in sub_kmi:
 for n in sub_vmi:
     files_vmi.append(set_dir + 'MIT' + str(n) + "_INT.set")
 
-
-
 # Load and preprocess .set files
 subject_files = {
     'KMI': files_kmi,  # Group 1
@@ -44,11 +43,10 @@ for group, files in subject_files.items():
     group_label = group_labels[group]
     for file in files:
         epochs = read_epochs_eeglab(file)
-        epochs = epochs.resample(200, verbose = True)
-        epochs = epochs.crop(0,3,True,False)
-        # events = find_events(raw)
-        # event_id = {'specific_event': group_label}
-        # epochs = Epochs(raw, events, event_id, tmin=-0.2, tmax=0.8, baseline=(None, 0), preload=True)
+        # downsample to 100 Hz (400 timepoints for 4 seconds)
+        epochs = epochs.resample(100, verbose = True)
+        # crop from -1 to 3
+        epochs = epochs.crop(-1,3,True,False)
 
         # Append data and labels
         print(len(epochs))
@@ -89,9 +87,7 @@ fold_number = 1
 lr = 0.00005
 w_decay = 0.01
 
-
 opt_atc = keras.optimizers.Adam(learning_rate = lr)
-
 
 for train_index, test_index in skf.split(X, y):
     print(f"Processing Fold {fold_number}...")

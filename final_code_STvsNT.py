@@ -58,8 +58,6 @@ import gc
 import keras
 def proposed(n_timesteps, n_features, n_outputs):
     
-
-   
     input_1 = Input(shape=(1, n_features, n_timesteps))  # TensorShape([None, 1, 22, 1125])
 
     block0       = Conv2D(filters=8, kernel_size=(1, 16), use_bias = False, padding='same', data_format="channels_first")(input_1)
@@ -111,7 +109,6 @@ def se_block(tensor, ratio=16):
     x = multiply([init, se])
     return x
 
-
 def plot_history(train_acc,val_acc):
     plt.plot(train_acc, color ='blue', label='train')
     plt.plot(val_acc, color ='red', label = 'test')
@@ -123,7 +120,6 @@ def plot_history(train_acc,val_acc):
     fig_file = f"curves/AccuracyCurve_{timestamp}.pdf"
     plt.savefig(fig_file)
 
-
 # Creating Arrays of Data
 nSub = 20
 img_dict = mat73.loadmat('./dataset/SF_Img_MLdata.mat')
@@ -133,6 +129,9 @@ import numpy as np
 
 img_tr_con = []
 y_img = []
+
+
+
 for i in range(len(img_list)):
     img_arr = img_list[i]
 
@@ -233,9 +232,6 @@ for sub in range(nSub):
     # Downsampling through skipping
     X_train_t = X_train_t[:, :, :, 4::5]
     X_test_t = X_test_t[:, :, :, 4::5]
-
-
-
 
     print('X Test: ', np.shape(X_test_t))
     print('X Train: ', np.shape(X_train_t))
