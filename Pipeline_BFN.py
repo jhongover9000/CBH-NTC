@@ -188,14 +188,21 @@ for train_index, test_index in skf.split(X, y):
     # Evaluate the model on the test set
     scores = model.evaluate(X_test, y_test, verbose=1)
     print(f"Fold {fold_number} - Loss: {scores[0]}, Accuracy: {scores[1]}")
-
-
+    
     # Track metrics
     loss_per_fold.append(scores[0])
     accuracy_per_fold.append(scores[1])
 
     # Increment fold number
     fold_number += 1
+
+    probs_atc = model.predict(X_test)
+    preds_atc = probs_atc.argmax(axis=-1)
+    acc_atc = np.mean(preds_atc == y_test.argmax(axis=-1))
+    print(f'ATC:{acc_atc} %')
+    history_list.append(history_atc)
+
+    scores_atc.append(acc_atc)
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
