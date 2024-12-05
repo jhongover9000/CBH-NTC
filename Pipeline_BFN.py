@@ -214,12 +214,19 @@ for sub in range(nSub-4):
     val_acc=val_acc.flatten()+ np.array(history_list[sub].history['val_accuracy']).flatten()
 train_acc=train_acc/(nSub-4)
 val_acc= val_acc/(nSub-4)
-BFN.plot_history(train_acc,val_acc)
+BFN.plot_history(train_acc,val_acc,timestamp)
 
 
 print(f'Avg Accuracy ATC:{np.mean(scores_atc)} %')
 print(f'All Accuracy ATC:{scores_atc} ')
 
+# Test evaluation
+test_loss, test_accuracy = model.evaluate(X_test, y_test)
+print(f"Test Accuracy: {test_accuracy * 100:.2f}%")
+
+# Predict on test set
+y_pred = model.predict(X_test)
+y_pred_classes = np.argmax(y_pred, axis=1)
 
 # Classification report
 print("Classification Report:")

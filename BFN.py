@@ -36,7 +36,7 @@ def proposed(n_timesteps, n_features, n_outputs):
     block2       = LayerNormalization()(block2)
     block2       = Activation(activation='elu')(block2)
 
-    block2 = Concatenate(axis=1)([block0, block1, block2])
+    block2 = Concatenate(axis=1)([block1, block2])
     block2       = se_block(block2, 8)
     
     block3       = DepthwiseConv2D(kernel_size=(n_features, 1), depth_multiplier=2, use_bias = False, depthwise_constraint=max_norm(1.), data_format="channels_first")(block2)
@@ -69,7 +69,7 @@ def se_block(tensor, ratio=16):
     x = multiply([init, se])
     return x
 
-def plot_history(train_acc,val_acc):
+def plot_history(train_acc,val_acc, timestamp):
     plt.plot(train_acc, color ='blue', label='train')
     plt.plot(val_acc, color ='red', label = 'test')
     plt.title('model accuracy')
