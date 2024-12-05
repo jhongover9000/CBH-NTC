@@ -166,7 +166,7 @@ for train_index, test_index in skf.split(X, y):
         ModelCheckpoint(f'best_model_fold_{fold_number}.weights.h5', monitor='val_loss', save_best_only=True, save_weights_only=True)
     ]
 
-    history_atc = model.fit(X_train, y_train, validation_data = (X_test,y_test), batch_size=bs_t, epochs=epochs, callbacks = callbacks verbose=1)
+    history_atc = model.fit(X_train, y_train, validation_data = (X_test,y_test), batch_size=bs_t, epochs=epochs, callbacks = callbacks, verbose=1)
     probs_atc = model.predict(X_test)
     preds_atc = probs_atc.argmax(axis=-1)
     acc_atc = np.mean(preds_atc == y_test.argmax(axis=-1))
