@@ -9,7 +9,10 @@ from mne.io import read_epochs_eeglab
 from mne import Epochs, find_events
 from sklearn.model_selection import train_test_split
 import tensorflow.keras.backend as K
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1' 
 import tensorflow as tf
+
 
 gpus = tf.config.experimental.list_physical_devices('GPU')
 print("GPUs available:", gpus)
@@ -183,7 +186,7 @@ for train_index, test_index in skf.split(X, y):
         ModelCheckpoint(f'best_model_fold_{fold_number}.weights.h5', monitor='val_loss', save_best_only=True, save_weights_only=True)
     ]
 
-    history_atc = model.fit(X_train, y_train, batch_size=bs_t, epochs=epochs, callbacks = callbacks, verbose=1)
+    history_atc = model.fit(X_train, y_train, validation_data = (X_test,y_test), batch_size=bs_t, epochs=epochs, callbacks = callbacks, verbose=1)
 
     # Evaluate the model on the test set
     scores = model.evaluate(X_test, y_test, verbose=1)
@@ -205,6 +208,16 @@ for train_index, test_index in skf.split(X, y):
     scores_atc.append(acc_atc)
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+
+
+# ==================================================================================================
+# ==================================================================================================
+# Model Evaluation
+from sklearn.metrics import classification_report, confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
+
 
 #plot accuracy history
 train_acc=np.zeros((epochs,1))
