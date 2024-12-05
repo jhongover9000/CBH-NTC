@@ -16,15 +16,15 @@ print("GPUs available:", gpus)
 print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
 
 # Check for TPU availability
-try:
-    resolver = tf.distribute.cluster_resolver.TPUClusterResolver()  # Automatically detects TPU
-    tf.config.experimental_connect_to_cluster(resolver)
-    tf.config.experimental_set_virtual_device_configuration(
-        resolver.get_master(),
-        [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=4096)])  # Memory configuration
-    strategy = tf.distribute.TPUStrategy(resolver)
-except ValueError:
-    print("No TPU detected, falling back to CPU/GPU.")
+# try:
+#     resolver = tf.distribute.cluster_resolver.TPUClusterResolver()  # Automatically detects TPU
+#     tf.config.experimental_connect_to_cluster(resolver)
+#     tf.config.experimental_set_virtual_device_configuration(
+#         resolver.get_master(),
+#         [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=4096)])  # Memory configuration
+#     strategy = tf.distribute.TPUStrategy(resolver)
+# except ValueError:
+#     print("No TPU detected, falling back to CPU/GPU.")
 
 
 set_dir = './epoched/'
@@ -184,13 +184,18 @@ for train_index, test_index in skf.split(X, y):
     ]
 
     history_atc = model.fit(X_train, y_train, validation_data = (X_test,y_test), batch_size=bs_t, epochs=epochs, callbacks = callbacks, verbose=1)
-    probs_atc = model.predict(X_test)
-    preds_atc = probs_atc.argmax(axis=-1)
-    acc_atc = np.mean(preds_atc == y_test.argmax(axis=-1))
-    print(f'ATC:{acc_atc} %')
-    history_list.append(history_atc)
 
-    scores_atc.append(acc_atc)
+    # Evaluate the model on the test set
+    scores = model.evaluate(X_test, y_test, verbose=1)
+    print(f"Fold {fold_number} - Loss: {scores[0]}, Accuracy: {scores[1]}")
+
+
+    # Track metrics
+    loss_per_fold.append(scores[0])
+    accuracy_per_fold.append(scores[1])
+
+    # Increment fold number
+    fold_number += 1
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
@@ -207,3 +212,44 @@ BFN.plot_history(train_acc,val_acc)
 
 print(f'Avg Accuracy ATC:{np.mean(scores_atc)} %')
 print(f'All Accuracy ATC:{scores_atc} ')
+
+
+# Classification report
+print("Classification Report:")
+print(classification_report(y_test, y_pred_classes, target_names=['Group 1', 'Group 2']))
+
+# Confusion matrix
+conf_matrix = confusion_matrix(y_test, y_pred_classes)
+plt.figure(figsize=(8, 6))
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=['Group 1', 'Group 2'], yticklabels=['Group 1', 'Group 2'])
+plt.title('Confusion Matrix')
+plt.ylabel('True Label')
+plt.xlabel('Predicted Label')
+plt.show()
+
+
+def plot_training_history(history):
+    plt.figure(figsize=(12, 4))
+    
+    # Loss plot
+    plt.subplot(1, 2, 1)
+    plt.plot(history.history['loss'], label='Train Loss')
+    plt.plot(history.history['val_loss'], label='Val Loss')
+    plt.title('Loss over Epochs')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    
+    # Accuracy plot
+    plt.subplot(1, 2, 2)
+    plt.plot(history.history['accuracy'], label='Train Accuracy')
+    plt.plot(history.history['val_accuracy'], label='Val Accuracy')
+    plt.title('Accuracy over Epochs')
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy')
+    plt.legend()
+    
+    plt.tight_layout()
+    plt.show()
+
+plot_training_history(history)
