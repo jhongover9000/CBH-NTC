@@ -9,6 +9,23 @@ from mne.io import read_epochs_eeglab
 from mne import Epochs, find_events
 from sklearn.model_selection import train_test_split
 import tensorflow.keras.backend as K
+import tensorflow as tf
+
+gpus = tf.config.experimental.list_physical_devices('GPU')
+print("GPUs available:", gpus)
+print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
+
+# Check for TPU availability
+try:
+    resolver = tf.distribute.cluster_resolver.TPUClusterResolver()  # Automatically detects TPU
+    tf.config.experimental_connect_to_cluster(resolver)
+    tf.config.experimental_set_virtual_device_configuration(
+        resolver.get_master(),
+        [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=4096)])  # Memory configuration
+    strategy = tf.distribute.TPUStrategy(resolver)
+except ValueError:
+    print("No TPU detected, falling back to CPU/GPU.")
+
 
 set_dir = './epoched/'
 
@@ -104,7 +121,7 @@ w_decay = 0.01
 
 nSub = 31  # number of subjects
 bs_t = 16  # batch size
-epochs = 30
+epochs = 75
 lr = 0.00005
 scores_atc = []
 scores_dcn = []
