@@ -27,10 +27,6 @@ def proposed(n_timesteps, n_features, n_outputs):
     
     input_1 = Input(shape=(1, n_features, n_timesteps))  # TensorShape([None, 1, 22, 1125])
 
-    block0       = Conv2D(filters=8, kernel_size=(1, 16), use_bias = False, padding='same', data_format="channels_first")(input_1)
-    block0       = LayerNormalization()(block0)
-    block0       = Activation(activation='elu')(block0)
-
     block1       = Conv2D(filters=8, kernel_size=(1, 32), use_bias = False, padding='same', data_format="channels_first")(input_1)
     block1       = LayerNormalization()(block1)
     block1       = Activation(activation='elu')(block1)
@@ -40,11 +36,8 @@ def proposed(n_timesteps, n_features, n_outputs):
     block2       = LayerNormalization()(block2)
     block2       = Activation(activation='elu')(block2)
 
-
     block2 = Concatenate(axis=1)([block0, block1, block2])
     block2       = se_block(block2, 8)
-    
-    
     
     block3       = DepthwiseConv2D(kernel_size=(n_features, 1), depth_multiplier=2, use_bias = False, depthwise_constraint=max_norm(1.), data_format="channels_first")(block2)
     block3       = LayerNormalization()(block3)

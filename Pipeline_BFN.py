@@ -183,12 +183,12 @@ for train_index, test_index in skf.split(X, y):
         ModelCheckpoint(f'best_model_fold_{fold_number}.weights.h5', monitor='val_loss', save_best_only=True, save_weights_only=True)
     ]
 
-    history_atc = model.fit(X_train, y_train, validation_data = (X_test,y_test), batch_size=bs_t, epochs=epochs, callbacks = callbacks, verbose=1)
+    history_atc = model.fit(X_train, y_train, batch_size=bs_t, epochs=epochs, callbacks = callbacks, verbose=1)
 
     # Evaluate the model on the test set
     scores = model.evaluate(X_test, y_test, verbose=1)
     print(f"Fold {fold_number} - Loss: {scores[0]}, Accuracy: {scores[1]}")
-    
+
     # Track metrics
     loss_per_fold.append(scores[0])
     accuracy_per_fold.append(scores[1])
