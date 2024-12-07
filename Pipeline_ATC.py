@@ -67,6 +67,7 @@ print("Done Preprocessing Subjects.")
 from sklearn.model_selection import StratifiedKFold
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.preprocessing import StandardScaler
 from keras.models import Sequential
 from keras.layers import Dense
 from keras import backend as K
@@ -89,8 +90,6 @@ fold_number = 1
 lr = 0.00005
 w_decay = 0.01
 
-opt_atc = keras.optimizers.Adam(learning_rate = lr)
-
 for train_index, test_index in skf.split(X, y):
     print(f"Processing Fold {fold_number}...")
     
@@ -98,11 +97,15 @@ for train_index, test_index in skf.split(X, y):
     X_train, X_test = X[train_index], X[test_index]
     y_train, y_test = y[train_index], y[test_index]
 
+    # Normalize across trials
+    X_train = StandardScaler().fit_transform(X_train.reshape(X_train.shape[0], -1)).reshape(X_train.shape)
+    X_test = StandardScaler().fit_transform(X_test.reshape(X_test.shape[0], -1)).reshape(X_test.shape)
+
     # Define the ATCNet model
     input_shape = (X_train.shape[1], X_train.shape[2])  # (n_channels, n_times)
     nb_classes = len(np.unique(y))
     model = atc.ATCNet(input_shape=input_shape, nb_classes=nb_classes)
-
+    opt_atc = keras.optimizers.Adam(learning_rate = lr)
     # Compile the model
     model.compile(optimizer=opt_atc, 
                   loss='sparse_categorical_crossentropy', 

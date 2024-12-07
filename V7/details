@@ -1,0 +1,11 @@
+3 channels-1,3
+
+Classification Report:
+              precision    recall  f1-score   support
+
+         KMI       0.63      0.62      0.62       148
+         VMI       0.49      0.50      0.49       109
+
+    accuracy                           0.57       257
+   macro avg       0.56      0.56      0.56       257
+weighted avg       0.57      0.57      0.57       257

@@ -1,0 +1,4 @@
+[0,2] 200Hz
+normalized
+seed - 42
+75 epochs

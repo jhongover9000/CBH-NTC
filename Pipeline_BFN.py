@@ -60,13 +60,19 @@ group_labels = {'KMI': 0, 'VMI': 1}
 all_data = []
 all_labels = []
 chan2drop = ["T7","T8",'FT7','FT8']
+chan2use = ['C3','O1', 'O2']
 
 for group, files in subject_files.items():
     group_label = group_labels[group]
     for file in files:
         epochs = read_epochs_eeglab(file)
+
         # drop additional channels to fit BFN
         epochs = epochs.drop_channels(chan2drop)
+
+        # pick specific channels: C3, O1, O2
+        # epochs = epochs.pick_channels(chan2use)
+
         print("Channels after dropping:", epochs.info['ch_names'])
         # downsample to 100 Hz (400 timepoints for 4 seconds)
         epochs = epochs.resample(100, verbose = True)
@@ -95,6 +101,7 @@ from sklearn.model_selection import StratifiedKFold
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.utils.class_weight import compute_class_weight
 from keras.models import Sequential
 from keras.layers import Dense
 from keras import backend as K
@@ -105,6 +112,8 @@ import matplotlib.pyplot as plt
 import shap
 from datetime import datetime
 import gc
+
+from tensorflow.keras.utils import to_categorical
 
 print("Starting")
 
@@ -124,7 +133,7 @@ w_decay = 0.01
 
 nSub = 31  # number of subjects
 bs_t = 16  # batch size
-epochs = 75
+epochs = 90
 lr = 0.00005
 scores_atc = []
 scores_dcn = []
@@ -150,22 +159,48 @@ model_test = BFN.proposed(samples, chans, nb_classes)
 print(model_test.summary())
 print(len(model_test.layers))
 
+# Initialize StandardScaler
+scaler = StandardScaler()
+
+# Normalize across trials, for each channel and time point, apply scaling for each trial
+def standardize_epochs(X):
+    # Apply scaling to each channel independently across trials and time
+    n_trials, n_channels, n_times = X.shape
+    X_scaled = np.zeros_like(X)
+    
+    for i in range(n_channels):  # Iterate over each channel
+        # Fit and transform the data for this channel (normalize across trials and times)
+        X_scaled[:, i, :] = scaler.fit_transform(X[:, i, :])
+    
+    return X_scaled
+
 
 for train_index, test_index in skf.split(X, y):
 
     # Split the data into training and test sets for this fold
     X_train, X_test = X[train_index], X[test_index]
+
+    # Apply standardization to the training and testing data
+    X_train = standardize_epochs(X_train)
+    X_test = standardize_epochs(X_test)
+
+
     # expand dimension to match input type, (n_trials, 1, n_channels, n_timepoints)
     X_train = np.expand_dims(X_train,1)
     X_test = np.expand_dims(X_test,1)
 
-    # Normalize across trials
-    X_train = StandardScaler().fit_transform(X_train.reshape(X_train.shape[0], -1)).reshape(X_train.shape)
-    X_test = StandardScaler().fit_transform(X_test.reshape(X_test.shape[0], -1)).reshape(X_test.shape)
+
 
     print(np.shape(X_train))
 
     y_train, y_test = y[train_index], y[test_index]
+
+    class_weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y_train)
+    class_weight_dict = {i: class_weights[i] for i in range(len(class_weights))}
+
+
+    y_train = to_categorical(y_train)
+    y_test = to_categorical(y_test)
 
     model = BFN.proposed(samples, chans, nb_classes)
     model.load_weights('./pretrained_VR.h5', by_name = True, skip_mismatch = True)
@@ -174,19 +209,20 @@ for train_index, test_index in skf.split(X, y):
 
     # Compile the model
     model.compile(optimizer=opt_atc, 
-                    loss='sparse_categorical_crossentropy', 
+                    loss='categorical_crossentropy', 
                     metrics=['accuracy'])
 
     print("Learning rate before first fit:", model.optimizer.learning_rate.numpy())
+
 
     # Callbacks for training
     callbacks = [
         EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True),
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=0.00005),
-        ModelCheckpoint(f'best_model_fold_{fold_number}.weights.h5', monitor='val_loss', save_best_only=True, save_weights_only=True)
+        ModelCheckpoint(f'best_model_fold_{fold_number}.weights.h5', monitor='val_loss', save_weights_only=True)
     ]
 
-    history_atc = model.fit(X_train, y_train, validation_data = (X_test,y_test), batch_size=bs_t, epochs=epochs, callbacks = callbacks, verbose=1)
+    history = model.fit(X_train, y_train, validation_data = (X_test,y_test), batch_size=bs_t, epochs=epochs, callbacks = callbacks, class_weight=class_weight_dict, verbose=1)
 
     # Evaluate the model on the test set
     scores = model.evaluate(X_test, y_test, verbose=1)
@@ -203,7 +239,7 @@ for train_index, test_index in skf.split(X, y):
     preds_atc = probs_atc.argmax(axis=-1)
     acc_atc = np.mean(preds_atc == y_test.argmax(axis=-1))
     print(f'ATC:{acc_atc} %')
-    history_list.append(history_atc)
+    history_list.append(history)
 
     scores_atc.append(acc_atc)
 
@@ -218,21 +254,6 @@ from sklearn.metrics import classification_report, confusion_matrix
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-
-#plot accuracy history
-# train_acc=np.zeros((epochs,1))
-# val_acc=np.zeros((epochs,1))
-# for sub in range(nSub-4):
-#     train_acc=train_acc.flatten() + np.array(history_list[sub].history['accuracy']).flatten()
-#     val_acc=val_acc.flatten()+ np.array(history_list[sub].history['val_accuracy']).flatten()
-# train_acc=train_acc/(nSub-4)
-# val_acc= val_acc/(nSub-4)
-# BFN.plot_history(train_acc,val_acc,timestamp)
-
-
-# print(f'Avg Accuracy ATC:{np.mean(scores_atc)} %')
-# print(f'All Accuracy ATC:{scores_atc} ')
-
 # Test evaluation
 test_loss, test_accuracy = model.evaluate(X_test, y_test)
 print(f"Test Accuracy: {test_accuracy * 100:.2f}%")
@@ -243,15 +264,26 @@ y_pred_classes = np.argmax(y_pred, axis=1)
 
 # Classification report
 print("Classification Report:")
-print(classification_report(y_test, y_pred_classes, target_names=['Group 1', 'Group 2']))
+print(classification_report(y_test, y_pred_classes, target_names=['KMI', 'VMI']))
 
 # Confusion matrix
 conf_matrix = confusion_matrix(y_test, y_pred_classes)
+
+# Normalize by row (true labels)
+conf_matrix_percent = conf_matrix.astype('float') / conf_matrix.sum(axis=1)[:, np.newaxis] * 100
+
+# Plot the confusion matrix
 plt.figure(figsize=(8, 6))
-sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=['Group 1', 'Group 2'], yticklabels=['Group 1', 'Group 2'])
-plt.title('Confusion Matrix')
+sns.heatmap(conf_matrix_percent, annot=True, fmt='.2f', cmap='Blues', xticklabels=['KMI', 'VMI'], yticklabels=['KMI', 'VMI'])
+plt.title('Confusion Matrix (Percentages)')
 plt.ylabel('True Label')
 plt.xlabel('Predicted Label')
+
+# Save the figure
+fig_file = f"matrix/con_matrix_{timestamp}.png"
+plt.savefig(fig_file)
+
+# Show the plot
 plt.show()
 
 
@@ -277,6 +309,23 @@ def plot_training_history(history):
     plt.legend()
     
     plt.tight_layout()
+    fig_file = f"curves/History_{timestamp}.png"
+    plt.savefig(fig_file)
     plt.show()
 
 plot_training_history(history)
+
+# #plot accuracy history
+# train_acc=np.zeros((epochs,1))
+# val_acc=np.zeros((epochs,1))
+# for sub in range(n_splits):
+#     train_acc=train_acc.flatten() + np.array(history_list[sub].history['accuracy']).flatten()
+#     val_acc=val_acc.flatten()+ np.array(history_list[sub].history['val_accuracy']).flatten()
+# train_acc=train_acc/(n_splits)
+# val_acc= val_acc/(n_splits)
+# BFN.plot_history(train_acc,val_acc,timestamp)
+
+# print(f'Avg Accuracy ATC:{np.mean(scores_atc)} %')
+# print(f'All Accuracy ATC:{scores_atc} ')
+
+
