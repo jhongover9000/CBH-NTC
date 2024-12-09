@@ -2,3 +2,4 @@
 /epoched
 
 .DS_Store
+*.npz
