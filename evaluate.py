@@ -1,337 +1,169 @@
+# Evaluate Model
+# Description: This script evaluates saved weights of the model using an aggregate approach.
+# ==================================================================================================
 
-# ==================================================================================================
-# ==================================================================================================
-# Label Subjects
-import numpy as np
-import atc
-import keras
-from mne.io import read_epochs_eeglab
-from mne import Epochs, find_events
-from sklearn.model_selection import train_test_split
-import tensorflow.keras.backend as K
+# Import necessary libraries
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1' 
-import tensorflow as tf
-
-
-gpus = tf.config.experimental.list_physical_devices('GPU')
-print("GPUs available:", gpus)
-print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
-
-# Check for TPU availability
-# try:
-#     resolver = tf.distribute.cluster_resolver.TPUClusterResolver()  # Automatically detects TPU
-#     tf.config.experimental_connect_to_cluster(resolver)
-#     tf.config.experimental_set_virtual_device_configuration(
-#         resolver.get_master(),
-#         [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=4096)])  # Memory configuration
-#     strategy = tf.distribute.TPUStrategy(resolver)
-# except ValueError:
-#     print("No TPU detected, falling back to CPU/GPU.")
-
-
-# set_dir = './epoched/'
-
-# print("Preprocessing Subjects...")
-
-# # Split subjects by KMI vs VMI
-# sub_kmi = [1,2,3,5,6,12,13,14,15,21,22,23,26,27,28,30,31,33]
-# sub_vmi = [4,7,8,9,10,11,16,17,19,24,25,29,32]
-# sub_etc = [18,20]
-
-# files_kmi = []
-# files_vmi = []
-
-# for n in sub_kmi:
-#     files_kmi.append(set_dir + 'MIT' + str(n) + "_INT.set")
-
-# for n in sub_vmi:
-#     files_vmi.append(set_dir + 'MIT' + str(n) + "_INT.set")
-
-
-
-# # Load and preprocess .set files
-# subject_files = {
-#     'KMI': files_kmi,  # Group 1
-#     'VMI': files_vmi,  # Group 2
-# }
-# group_labels = {'KMI': 0, 'VMI': 1}
-
-# all_data = []
-# all_labels = []
-# chan2drop = ["T7","T8",'FT7','FT8']
-# chan2use = ['C3','O1', 'O2']
-
-# for group, files in subject_files.items():
-#     group_label = group_labels[group]
-#     for file in files:
-#         epochs = read_epochs_eeglab(file)
-
-#         # drop additional channels to fit BFN
-#         epochs = epochs.drop_channels(chan2drop)
-
-#         # pick specific channels: C3, O1, O2
-#         # epochs = epochs.pick_channels(chan2use)
-
-#         print("Channels after dropping:", epochs.info['ch_names'])
-#         # downsample to 100 Hz (400 timepoints for 4 seconds)
-#         epochs = epochs.resample(100, verbose = True)
-#         # crop from -1 to 3
-#         epochs = epochs.crop(-1,3,False,False)
-        
-
-#         # Append data and labels
-#         print(len(epochs))
-#         all_data.append(epochs.get_data())  # Shape: (n_epochs, n_channels, n_times)
-#         all_labels.append(np.full(len(epochs), group_label))
-
-# # Combine all subjects' data
-# X = np.concatenate(all_data, axis=0)
-# y = np.concatenate(all_labels, axis=0)
-
-# print(X.shape)
-# print(y.shape)
-
-# print("Done Preprocessing Subjects.")
-
-# # Save data and labels to a file
-# save_path = "subject_data.npz"  # Specify your desired file path
-# np.savez(save_path, X=X, y=y)
-
-# print(f"Data saved to {save_path}.")
-
-# Load data and labels
-data = np.load("subject_data.npz")
-X = data['X']
-y = data['y']
-
-print(f"Data loaded. X shape: {X.shape}, y shape: {y.shape}")
-
-# ==================================================================================================
-# ==================================================================================================
-# Train Model with 5 fold validation
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.model_selection import StratifiedKFold
-from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.utils.class_weight import compute_class_weight
-from keras.models import Sequential
-from keras.layers import Dense
-from keras import backend as K
+import tensorflow as tf
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+import tensorflow.keras.backend as K
 import keras
-import numpy as np
+from keras.models import Sequential
+from collections import defaultdict
+import pandas as pd
 import BFN
-import matplotlib.pyplot as plt
-import shap
 from datetime import datetime
 import gc
-from sklearn.metrics import classification_report, confusion_matrix
-import seaborn as sns
-import matplotlib.pyplot as plt
-from tensorflow.keras.utils import to_categorical
 
-print("Starting")
 
-# X (EEG data) and y (labels) are already prepared
-# X.shape: (n_samples, n_channels, n_times), y.shape: (n_samples)
-n_splits = 5  # Number of folds
-skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+# Load Data
+data = np.load("subject_data.npz")
+X = data['X']
+y = data['y']
+subject_ids = data['subject_ids']
+print(f"Data loaded. X shape: {X.shape}, y shape: {y.shape}, Subject IDs: {subject_ids.shape}")
 
-# Initialize lists to track metrics for each fold
+# Parameters
+n_splits = 5
+n_classes = y.shape[-1]
+batch_size = 16
+samples, chans = X.shape[2], X.shape[1]
+
+# Initialize accumulators
+conf_matrix_accum = np.zeros((n_classes, n_classes), dtype=np.float64)
 accuracy_per_fold = []
 loss_per_fold = []
-
-fold_number = 1
-
-lr = 0.00005
-w_decay = 0.01
-
-nSub = 31  # number of subjects
-bs_t = 16  # batch size
-epochs = 90
-lr = 0.00005
 scores_atc = []
-scores_dcn = []
-scores_soft = []
-nb_classes = 2
-chans = 56
-samples = 400
-w_decay = 0.01
-confx = np.zeros((nSub, nb_classes, nb_classes))
 
-shap_values_all = []
-y_test_all = []
-y_pred_all = []
+# Initialize misclassification tracking
+misclassified_trials_all = defaultdict(list)
+misclassification_stats_all = defaultdict(int)
 
-history_list=[]
+print("\nStarting Evaluation...")
 
-# tf.compat.v1.disable_eager_execution()
-# tf.compat.v1.disable_v2_behavior()
-
-# debug
-print('Comment: Test')
-model_test = BFN.proposed(samples, chans, nb_classes)
-print(model_test.summary())
-print(len(model_test.layers))
-
-# Initialize StandardScaler
-scaler = StandardScaler()
-
-# Normalize across trials, for each channel and time point, apply scaling for each trial
-def standardize_epochs(X):
-    # Apply scaling to each channel independently across trials and time
-    n_trials, n_channels, n_times = X.shape
-    X_scaled = np.zeros_like(X)
+# Iterate over folds
+for fold_number in range(1, n_splits + 1):
+    print(f"Processing Fold {fold_number}...")
     
-    for i in range(n_channels):  # Iterate over each channel
-        # Fit and transform the data for this channel (normalize across trials and times)
-        X_scaled[:, i, :] = scaler.fit_transform(X[:, i, :])
+    # Load weights for the fold
+    weight_file = f"best_model_fold_{fold_number}.weights.h5"
+    if not os.path.exists(weight_file):
+        print(f"Warning: Weight file {weight_file} not found. Skipping this fold.")
+        continue
     
-    return X_scaled
-
-
-for train_index, test_index in skf.split(X, y):
-
-    # Split the data into training and test sets for this fold
-    X_train, X_test = X[train_index], X[test_index]
-
-    # Apply standardization to the training and testing data
-    X_train = standardize_epochs(X_train)
-    X_test = standardize_epochs(X_test)
-
-
-    # expand dimension to match input type, (n_trials, 1, n_channels, n_timepoints)
-    X_train = np.expand_dims(X_train,1)
-    X_test = np.expand_dims(X_test,1)
-
-
-
-    print(np.shape(X_train))
-
-    y_train, y_test = y[train_index], y[test_index]
-
-    class_weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y_train)
-    class_weight_dict = {i: class_weights[i] for i in range(len(class_weights))}
-
-
-    y_train = to_categorical(y_train)
-    y_test = to_categorical(y_test)
-
-    model = BFN.proposed(samples, chans, nb_classes)
-    model.load_weights('./best_model_fold_' + str(fold_number) + '.weights.h5')
-
-    opt_atc = keras.optimizers.Adam(learning_rate=lr ,weight_decay=w_decay)
-
-    # Compile the model
-    model.compile(optimizer=opt_atc, 
-                    loss='categorical_crossentropy', 
-                    metrics=['accuracy'])
+    # Split indices for the fold
+    fold_data = np.load(f"fold_{fold_number}_indices.npz")  # Assumes indices saved during training
+    test_index = fold_data['test_indices']
+    X_test = X[test_index]
+    y_test = y[test_index]
     
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-
-    # Evaluate the model on the test set
-    # Test evaluation
-    test_loss, test_accuracy = model.evaluate(X_test, y_test)
-    print(f"Test Accuracy: {test_accuracy * 100:.2f}%")
-
-     # Evaluate the model on the test set
-    scores = model.evaluate(X_test, y_test, verbose=1)
-    print(f"Fold {fold_number} - Loss: {scores[0]}, Accuracy: {scores[1]}")
-
-    # Predict on test set
-    y_pred = model.predict(X_test)
-    # Convert one-hot encoded y_test back to class labels
-    y_test_labels = np.argmax(y_test, axis=1)
-    y_pred_classes = np.argmax(y_pred, axis=1)
-
-    # Classification report
-    print("Classification Report:")
-    print(classification_report(y_test_labels, y_pred_classes, target_names=['KMI', 'VMI']))
-
-    # Confusion matrix
-    conf_matrix = confusion_matrix(y_test_labels, y_pred_classes)
-
-    # Normalize by row (true labels)
-    conf_matrix_percent = conf_matrix.astype('float') / conf_matrix.sum(axis=1)[:, np.newaxis] * 100
-
-    # Plot the confusion matrix
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(conf_matrix_percent, annot=True, fmt='.2f', cmap='Blues', xticklabels=['KMI', 'VMI'], yticklabels=['KMI', 'VMI'])
-    plt.title('Confusion Matrix (Percentages)')
-    plt.ylabel('True Label')
-    plt.xlabel('Predicted Label')
-
-    # Save the figure
-    fig_file = f"matrix/con_matrix_{timestamp}.png"
-    plt.savefig(fig_file)
-
-    # Show the plot
-    plt.show()
-
-    print(accuracy_per_fold)
-    # Track metrics
-    loss_per_fold.append(scores[0])
+    # Standardize test data
+    X_test_scaled = np.zeros_like(X_test)
+    scaler = StandardScaler()
+    for i in range(X_test.shape[1]):
+        scaler.fit(X[:, i, :])  # Fit on the entire data for consistency
+        X_test_scaled[:, i, :] = scaler.transform(X_test[:, i, :])
+    
+    # Expand dimensions for compatibility with the model
+    X_test_scaled = np.expand_dims(X_test_scaled, 1)
+    y_test_categorical = to_categorical(y_test, n_classes)
+    
+    # Load and compile the model
+    model = BFN.proposed(samples, chans, n_classes)
+    model.compile(
+        optimizer='adam',
+        loss='categorical_crossentropy',
+        metrics=['accuracy']
+    )
+    model.load_weights("best_model_fold_" + str(fold_number)+ ".weights.h5", skip_mismatch=True)
+    
+    # Evaluate the model
+    scores = model.evaluate(X_test_scaled, y_test_categorical, batch_size=batch_size, verbose=1)
     accuracy_per_fold.append(scores[1])
-
-    # Increment fold number
-    fold_number += 1
-
-    probs_atc = model.predict(X_test)
-    preds_atc = probs_atc.argmax(axis=-1)
-    acc_atc = np.mean(preds_atc == y_test.argmax(axis=-1))
-    print(f'ATC:{acc_atc} %')
-    # history_list.append(history)
-
-    scores_atc.append(acc_atc)
-
+    loss_per_fold.append(scores[0])
     
+    # Predict on the test set
+    y_pred = model.predict(X_test_scaled)
+    y_pred_classes = np.argmax(y_pred, axis=1)
+    y_test_classes = np.argmax(y_test_categorical, axis=1)
+    
+    # Compute confusion matrix for this fold
+    fold_conf_matrix = confusion_matrix(y_test_classes, y_pred_classes, labels=range(n_classes))
+    conf_matrix_accum += fold_conf_matrix
+    
+    # Identify misclassified trials
+    misclassified_indices = np.where(y_pred_classes != y_test_classes)[0]
+    test_subjects = subject_ids[test_index]  # Map test indices to subject IDs
+    
+    for idx in misclassified_indices:
+        subject_id = test_subjects[idx]
+        misclassified_trials_all[subject_id].append(idx)
+        misclassification_stats_all[subject_id] += 1
 
+    print(f"Fold {fold_number} - Accuracy: {scores[1]:.4f}, Loss: {scores[0]:.4f}")
 
+    # ==================================================================================================
+    # Clear memory after each fold
+    del model  # Delete model to free memory
+    K.clear_session()  # Clear Keras session to free up resources
+    gc.collect()  # Run garbage collection to clean up any residual memory usage
 
 # ==================================================================================================
-# =================================================================================================
-print(accuracy_per_fold)
+# Aggregate Results
+print("\nAggregating Results...")
+timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+# Print aggregated misclassification statistics
+print("\nAggregated Misclassification Statistics:")
+aggregated_df = pd.DataFrame.from_dict(misclassification_stats_all, orient='index', columns=['Misclassified Trials'])
+aggregated_df.index.name = 'Subject ID'
+print(aggregated_df)
+
+# Save aggregated statistics to CSV
+aggregated_csv_file = f"misclassified_trials_aggregated_{timestamp}.csv"
+aggregated_df.to_csv(aggregated_csv_file)
+print(f"Aggregated misclassification statistics saved to {aggregated_csv_file}.")
+
+# Print overall metrics
+print("\nFinal Metrics:")
+print(f"Average Accuracy Across Folds: {np.mean(accuracy_per_fold) * 100:.2f}%")
+print(f"Average Loss Across Folds: {np.mean(loss_per_fold):.4f}")
+
+# Average confusion matrix over all folds
+print("avg")
+conf_matrix_avg = conf_matrix_accum / n_splits
+
+# Compute row sums
+print("sum row")
+row_sums = conf_matrix_avg.sum(axis=1, keepdims=True)
+
+# Avoid division by zero
+row_sums[row_sums == 0] = 1  # Replace zeros with ones to prevent division by zero
+
+# Normalize confusion matrix to percentages
+conf_matrix_percent = conf_matrix_avg / row_sums * 100
+
+# Plot and save confusion matrix
+plt.figure(figsize=(8, 6))
+sns.heatmap(conf_matrix_percent, annot=True, fmt='.2f', cmap='Blues', 
+            xticklabels=['Class 0', 'Class 1'], yticklabels=['Class 0', 'Class 1'])
+plt.title('Average Confusion Matrix (Percentages)')
+plt.ylabel('True Label')
+plt.xlabel('Predicted Label')
 
 
-def plot_training_history(history):
-    plt.figure(figsize=(12, 4))
-    
-    # Loss plot
-    plt.subplot(1, 2, 1)
-    plt.plot(history.history['loss'], label='Train Loss')
-    plt.plot(history.history['val_loss'], label='Val Loss')
-    plt.title('Loss over Epochs')
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.legend()
-    
-    # Accuracy plot
-    plt.subplot(1, 2, 2)
-    plt.plot(history.history['accuracy'], label='Train Accuracy')
-    plt.plot(history.history['val_accuracy'], label='Val Accuracy')
-    plt.title('Accuracy over Epochs')
-    plt.xlabel('Epochs')
-    plt.ylabel('Accuracy')
-    plt.legend()
-    
-    plt.tight_layout()
-    fig_file = f"curves/History_{timestamp}.png"
-    plt.savefig(fig_file)
-    plt.show()
-
-plot_training_history(history)
-
-# #plot accuracy history
-# train_acc=np.zeros((epochs,1))
-# val_acc=np.zeros((epochs,1))
-# for sub in range(n_splits):
-#     train_acc=train_acc.flatten() + np.array(history_list[sub].history['accuracy']).flatten()
-#     val_acc=val_acc.flatten()+ np.array(history_list[sub].history['val_accuracy']).flatten()
-# train_acc=train_acc/(n_splits)
-# val_acc= val_acc/(n_splits)
-# BFN.plot_history(train_acc,val_acc,timestamp)
-
-# print(f'Avg Accuracy ATC:{np.mean(scores_atc)} %')
-# print(f'All Accuracy ATC:{scores_atc} ')
+conf_matrix_file = f"matrix/con_matrix_avg_{timestamp}.png"
+plt.savefig(conf_matrix_file)
+plt.show()
 
 
