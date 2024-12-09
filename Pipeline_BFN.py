@@ -264,7 +264,7 @@ y_pred_classes = np.argmax(y_pred, axis=1)
 
 # Classification report
 print("Classification Report:")
-print(classification_report(y_test, y_pred_classes, target_names=['KMI', 'VMI']))
+print(classification_report(y_test, y_pred_classes, target_names=['Group 1', 'Group 2']))
 
 # Confusion matrix
 conf_matrix = confusion_matrix(y_test, y_pred_classes)
@@ -285,6 +285,8 @@ plt.savefig(fig_file)
 
 # Show the plot
 plt.show()
+
+print(accuracy_per_fold)
 
 
 def plot_training_history(history):
