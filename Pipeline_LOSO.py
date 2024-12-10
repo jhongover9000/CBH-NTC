@@ -1,15 +1,11 @@
-# Training Pipeline
-# Author: Joseph Hong
-# Description: Training pipeline using a saved dataset.
+# Training Pipeline with Leave-One-Subject-Out Cross-Validation
 # ==================================================================================================
-
 # Import necessary libraries
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1' 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, confusion_matrix
@@ -22,16 +18,11 @@ import keras
 from keras.models import Sequential
 from collections import defaultdict
 import pandas as pd
-# import BFN
 from datetime import datetime
 import gc
 import shap
 from shap.explainers._deep import deep_tf
 import pickle
-
-
-from tensorflow.keras.models import Model
-# from deepexplain.tensorflow import DeepExplain
 from tensorflow.keras import backend as K
 from EEGModels import EEGNet, ShallowConvNet, DeepConvNet
 
@@ -55,13 +46,6 @@ print(f"Data loaded. X shape: {X.shape}, y shape: {y.shape}, Subject IDs: {subje
 def scaler_fit_transform(X_train, X_test):
     """
     Fits a StandardScaler on the training data and transforms both training and test data.
-    
-    Args:
-        X_train: Training data (n_samples, n_channels, n_timepoints)
-        X_test: Test data (n_samples, n_channels, n_timepoints)
-    
-    Returns:
-        X_train_scaled, X_test_scaled: Standardized training and test data
     """
     n_channels = X_train.shape[1]
     X_train_scaled = np.zeros_like(X_train)
@@ -70,11 +54,9 @@ def scaler_fit_transform(X_train, X_test):
     scaler = StandardScaler()
 
     for i in range(n_channels):  # Iterate over each channel
-        # Fit scaler on the training data for this channel
-        scaler.fit(X_train[:, i, :])
-        # Transform both training and test data for this channel
-        X_train_scaled[:, i, :] = scaler.transform(X_train[:, i, :])
-        X_test_scaled[:, i, :] = scaler.transform(X_test[:, i, :])
+        scaler.fit(X_train[:, i, :])  # Fit scaler on training data for each channel
+        X_train_scaled[:, i, :] = scaler.transform(X_train[:, i, :])  # Transform training data
+        X_test_scaled[:, i, :] = scaler.transform(X_test[:, i, :])  # Transform test data
 
     return X_train_scaled, X_test_scaled
 
@@ -83,7 +65,6 @@ def plot_training_history(history, timestamp):
     """Plot the training and validation loss and accuracy."""
     plt.figure(figsize=(12, 4))
     
-    # Loss plot
     plt.subplot(1, 2, 1)
     plt.plot(history.history['loss'], label='Train Loss')
     plt.plot(history.history['val_loss'], label='Val Loss')
@@ -91,8 +72,7 @@ def plot_training_history(history, timestamp):
     plt.xlabel('Epochs')
     plt.ylabel('Loss')
     plt.legend()
-    
-    # Accuracy plot
+
     plt.subplot(1, 2, 2)
     plt.plot(history.history['accuracy'], label='Train Accuracy')
     plt.plot(history.history['val_accuracy'], label='Val Accuracy')
@@ -100,23 +80,21 @@ def plot_training_history(history, timestamp):
     plt.xlabel('Epochs')
     plt.ylabel('Accuracy')
     plt.legend()
-    
+
     plt.tight_layout()
     fig_file = f"curves/History_{timestamp}.png"
     plt.savefig(fig_file)
     plt.show()
 
 # ==================================================================================================
-# Model Training with 5-Fold Cross-Validation
-n_splits = 5
-epochs = 90
+# LOSO Cross-Validation
+n_splits = len(np.unique(subject_ids))  # Number of subjects
+epochs = 75
 batch_size = 16
 learning_rate = 0.00005
 weight_decay = 0.01
 samples, chans = X.shape[2], X.shape[1]
 nb_classes = 2
-
-skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
 
 # Initialize an accumulator for the confusion matrix
 conf_matrix_accum = np.zeros((nb_classes, nb_classes))
@@ -138,12 +116,13 @@ misclassified_trials_per_fold = []  # List of dictionaries for each fold
 
 print("Starting Training...")
 
-for fold_number, (train_index, test_index) in enumerate(skf.split(X, y), 1):
-    print(f"Processing Fold {fold_number}...")
+# Iterate through each subject (Leave-One-Subject-Out)
+for subject in np.unique(subject_ids):
+    print(f"Processing Subject {subject}...")
 
-    # Save the fold indices to a .npz file
-    np.savez(f"fold_{fold_number}_indices.npz", train_index=train_index, test_index=test_index)
-    
+    # Define the train and test splits for this fold (leave one subject out)
+    test_index = np.where(subject_ids == subject)[0]
+    train_index = np.where(subject_ids != subject)[0]
     
     # Split the data
     X_train, X_test = X[train_index], X[test_index]
@@ -168,13 +147,8 @@ for fold_number, (train_index, test_index) in enumerate(skf.split(X, y), 1):
     class_weight_dict = dict(enumerate(class_weights))
     
     # Initialize and compile the model
-
-    # model = BFN.proposed(samples, chans, nb_classes)
-    # model.load_weights('./pretrained_VR.h5', by_name=True, skip_mismatch=True)
-
-    model = DeepConvNet(nb_classes, chans, Samples = samples)
-    model.load_weights("EEGNet-8-2-weights.h5",  by_name=True, skip_mismatch=True)
-
+    model = EEGNet(nb_classes, chans, Samples=samples)
+    model.load_weights("EEGNet-8-2-weights.h5", by_name=True, skip_mismatch=True)
 
     model.compile(
         optimizer=keras.optimizers.Adam(learning_rate=learning_rate, weight_decay=weight_decay),
@@ -186,7 +160,7 @@ for fold_number, (train_index, test_index) in enumerate(skf.split(X, y), 1):
     callbacks = [
         # EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True),
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=0.00005),
-        ModelCheckpoint(f"best_model_fold_{fold_number}.weights.h5", monitor='val_loss', save_weights_only=True)
+        ModelCheckpoint(f"best_model_subject_{subject}.weights.h5", monitor='val_loss', save_weights_only=True)
     ]
     
     # Train the model
@@ -212,7 +186,6 @@ for fold_number, (train_index, test_index) in enumerate(skf.split(X, y), 1):
     scores_atc.append(acc_atc)
 
     # Predict on the test set for the current fold
-    y_pred = model.predict(X_test)
     y_pred_classes = np.argmax(y_pred, axis=1)
     y_test_classes = np.argmax(y_test, axis=1)
 
@@ -220,7 +193,7 @@ for fold_number, (train_index, test_index) in enumerate(skf.split(X, y), 1):
     misclassified_indices = np.where(y_pred_classes != y_test_classes)[0]
     test_subjects = subject_ids[test_index]  # Map test indices to subject IDs
 
-    # Track misclassified trials for the current fold
+    # Track misclassified trials for the current subject
     misclassified_trials_current_fold = defaultdict(list)
     for idx in misclassified_indices:
         subject_id = test_subjects[idx]
@@ -230,11 +203,13 @@ for fold_number, (train_index, test_index) in enumerate(skf.split(X, y), 1):
 
     misclassified_trials_per_fold.append(misclassified_trials_current_fold)
 
-    # Compute fold confusion matrix
+    # Compute confusion matrix for the current subject
     fold_conf_matrix = confusion_matrix(y_test_classes, y_pred_classes, labels=range(nb_classes))
+    
+    # Accumulate confusion matrices
     conf_matrix_accum += fold_conf_matrix
     
-    print(f"Fold {fold_number} - Accuracy: {scores[1]:.4f}, Loss: {scores[0]:.4f}, ATC: {acc_atc:.4f}, Confusion Matrix:\n{fold_conf_matrix}")
+    print(f"Subject {subject} - Accuracy: {scores[1]:.4f}, Loss: {scores[0]:.4f}, ATC: {acc_atc:.4f}")
 
     # ==================================================================================================
     # Clear memory after each fold
@@ -245,69 +220,20 @@ for fold_number, (train_index, test_index) in enumerate(skf.split(X, y), 1):
 # ==================================================================================================
 # Model Evaluation and Visualization
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-print(f"\nAverage Accuracy Across Folds: {np.mean(accuracy_per_fold) * 100:.2f}%")
+print(f"\nAverage Accuracy Across Subjects: {np.mean(accuracy_per_fold) * 100:.2f}%")
+print(f"Average Loss Across Subjects: {np.mean(loss_per_fold):.4f}")
+print(f"Average ATC Across Subjects: {np.mean(scores_atc) * 100:.2f}%")
 
-# ==================================================================================================
-# Misclassification Statistics
-
-# Aggregated misclassification statistics across all folds
-print("\nAggregated Misclassification Statistics Across All Folds:")
-aggregated_df = pd.DataFrame.from_dict(misclassification_stats_all, orient='index', columns=['Misclassified Trials'])
-aggregated_df.index.name = 'Subject ID'
-print(aggregated_df)
-
-# Save the aggregated statistics to a CSV
-aggregated_csv_file = f"misclassified_trials_aggregated_{timestamp}.csv"
-aggregated_df.to_csv(aggregated_csv_file)
-print(f"Aggregated misclassification statistics saved to {aggregated_csv_file}.")
-
-# Per-fold misclassification statistics
-for fold, trials in enumerate(misclassified_trials_per_fold, start=1):
-    print(f"\nMisclassification Statistics for Fold {fold}:")
-    fold_df = pd.DataFrame.from_dict({k: len(v) for k, v in trials.items()}, 
-                                     orient='index', columns=['Misclassified Trials'])
-    fold_df.index.name = 'Subject ID'
-    print(fold_df)
-
-    # Save the per-fold statistics to a CSV
-    fold_csv_file = f"misclassified_trials_fold_{fold}_{timestamp}.csv"
-    fold_df.to_csv(fold_csv_file)
-    print(f"Fold {fold} misclassification statistics saved to {fold_csv_file}.")
-
-# ==================================================================================================
-# Final Aggregated Results
-
-# Plot Training History
-for fold, history in enumerate(history_list, 1):
-    plot_training_history(history, f"fold_{fold}_{timestamp}")
-
-# Compute average confusion matrix
-conf_matrix_avg = conf_matrix_accum / n_splits
-print(f"Average Confusion Matrix:\n{conf_matrix_avg}")
-
-# Normalize confusion matrix to percentages
-row_sums = conf_matrix_avg.sum(axis=1, keepdims=True)
-row_sums[row_sums == 0] = 1  # Avoid division by zero
-conf_matrix_percent = conf_matrix_avg / row_sums * 100
-print(f"Normalized Confusion Matrix (Percent):\n{conf_matrix_percent}")
-
-conf_matrix_percent[conf_matrix_percent == 0] = np.nan
-
-# Plot and save averaged confusion matrix
-
-print(conf_matrix_percent.shape)
-
+# Confusion Matrix and Heatmap
+conf_matrix_percent = conf_matrix_accum.astype('float') / conf_matrix_accum.sum(axis=1)[:, np.newaxis] * 100
 plt.figure(figsize=(8, 6))
-sns.heatmap(conf_matrix_percent, annot=True, fmt='.2f', cmap='Blues',
-            xticklabels=['KMI', 'VMI'], yticklabels=['KMI', 'VMI'])
+sns.heatmap(conf_matrix_percent, annot=True, fmt='.2f', cmap='Blues', xticklabels=['Class 1', 'Class 2'], yticklabels=['Class 1', 'Class 2'])
 plt.title('Confusion Matrix (Percentages)')
 plt.ylabel('True Label')
 plt.xlabel('Predicted Label')
-
-# Save the figure
-fig_file = f"matrix/con_matrix_{timestamp}.png"
-plt.savefig(fig_file)
-
-# Show the plot
+plt.savefig(f"matrix/con_matrix_{timestamp}.png")
 plt.show()
 
+# Misclassification Analysis
+misclassification_df = pd.DataFrame(misclassification_stats_all.items(), columns=["Subject", "Misclassified Trials"])
+misclassification_df.to_csv(f"misclassifications_{timestamp}.csv", index=False)
