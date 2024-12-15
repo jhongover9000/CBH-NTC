@@ -169,7 +169,7 @@ for index in sorted(indexes, reverse=True):
 
 nSub = 20 - len(indexes)  # number of subjects
 bs_t = 16  # batch size
-epochs = 30
+epochs = 90
 lr = 0.00005
 scores_atc = []
 scores_dcn = []

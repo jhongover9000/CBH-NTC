@@ -5,20 +5,10 @@
 # ==================================================================================================
 # Label Subjects
 import numpy as np
-import atc
-import keras
 from mne.io import read_epochs_eeglab
 from mne import Epochs, find_events
-from sklearn.model_selection import train_test_split
-import tensorflow.keras.backend as K
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1' 
-import tensorflow as tf
-
-# Check for GPU
-gpus = tf.config.experimental.list_physical_devices('GPU')
-print("GPUs available:", gpus)
-print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
 
 set_dir = './epoched/'
 
@@ -51,6 +41,11 @@ subject_ids = []
 chan2drop = ["T7", "T8", 'FT7', 'FT8']
 chan2use = ['C3', 'O1', 'O2']
 
+freq = 256
+start_time = 0.0  # Start time in seconds (relative to the epoch start)
+num_timepoints = 400  # Number of time points to keep
+end_time = start_time + (num_timepoints - 1) / freq
+
 for group, files in subject_files.items():
     group_label = group_labels[group]
     # Use the corresponding subject number (from sub_kmi or sub_vmi)
@@ -68,11 +63,12 @@ for group, files in subject_files.items():
         # Pick specific channels: C3, O1, O2 (if needed)
         # epochs = epochs.pick_channels(chan2use)
 
+
         print("Channels after dropping:", epochs.info['ch_names'])
         # Downsample to 100 Hz (400 timepoints for 4 seconds)
-        epochs = epochs.resample(100, verbose=True)
+        epochs = epochs.resample(256, verbose=True)
         # Crop from -1 to 3
-        epochs = epochs.crop(-1, 3, False, False)
+        epochs = epochs.crop(0, 2, False, False)
 
         # Append data, labels, and subject identifiers
         print(f"Processing subject {subject_num}, trials: {len(epochs)}")
@@ -94,7 +90,7 @@ print(y.shape)
 print("Done Preprocessing Subjects.")
 
 # # Save data and labels to a file
-save_path = "subject_data.npz"  # Specify your desired file path
+save_path = "subject_data_v4.npz"  # Specify your desired file path
 np.savez(save_path, X=X, y=y, subject_ids = subject_ids)
 
 print(f"Data saved to {save_path}.")

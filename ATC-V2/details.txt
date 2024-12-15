@@ -1,0 +1,10 @@
+atcnet
+data v4
+n_splits = 5
+epochs = 90
+batch_size = 16
+learning_rate = 0.00005
+weight_decay = 0.01
+samples, chans = X.shape[2], X.shape[1]
+nb_classes = 2
+seed = 42

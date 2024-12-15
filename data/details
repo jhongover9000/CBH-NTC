@@ -1,0 +1,4 @@
+v1 - 100Hz, 400 timepoints, 56 channels
+v2 - 256Hz, 640 timepoints, 56 channels
+v3 - 256Hz, -1 to 3, 56 channels
+v4 - 256Hz 0 to 2, 56 channels

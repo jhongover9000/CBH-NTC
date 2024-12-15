@@ -2,10 +2,11 @@
 # ==================================================================================================
 # Import necessary libraries
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1' 
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, confusion_matrix
@@ -18,22 +19,31 @@ import keras
 from keras.models import Sequential
 from collections import defaultdict
 import pandas as pd
+# import BFN
 from datetime import datetime
 import gc
 import shap
 from shap.explainers._deep import deep_tf
 import pickle
+
+
+from tensorflow.keras.models import Model
+# from deepexplain.tensorflow import DeepExplain
+from tensorflow.keras.layers import Input
 from tensorflow.keras import backend as K
-from EEGModels import EEGNet, ShallowConvNet, DeepConvNet
+from Models.EEGModels import EEGNet,DeepConvNet,ShallowConvNet
+from Models.models import ATCNet_
+
 
 # Check for GPU
 gpus = tf.config.experimental.list_physical_devices('GPU')
 print("GPUs available:", gpus)
 print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
 
+weights_dir = "./Weights/"
 
 # Load Data
-data = np.load("subject_data.npz")
+data = np.load("subject_data_v4.npz")
 X = data['X']
 y = data['y']
 subject_ids = data['subject_ids']
@@ -89,7 +99,7 @@ def plot_training_history(history, timestamp):
 # ==================================================================================================
 # LOSO Cross-Validation
 n_splits = len(np.unique(subject_ids))  # Number of subjects
-epochs = 75
+epochs = 90
 batch_size = 16
 learning_rate = 0.00005
 weight_decay = 0.01
@@ -123,8 +133,11 @@ for subject in np.unique(subject_ids):
     # Define the train and test splits for this fold (leave one subject out)
     test_index = np.where(subject_ids == subject)[0]
     train_index = np.where(subject_ids != subject)[0]
+
+    print(test_index)
+    print(train_index)
     
-    # Split the data
+   # Split the data
     X_train, X_test = X[train_index], X[test_index]
     y_train, y_test = y[train_index], y[test_index]
     
@@ -135,8 +148,14 @@ for subject in np.unique(subject_ids):
     X_train = np.expand_dims(X_train, 1)
     X_test = np.expand_dims(X_test, 1)
 
-    X_train = tf.transpose(X_train, perm=[0, 2, 3, 1])  # Swap axes
-    X_test = tf.transpose(X_test, perm=[0, 2, 3, 1])
+    # X_train = tf.transpose(X_train, perm=[0, 2, 3, 1])  # Swap axes for EEGNet
+    # X_test = tf.transpose(X_test, perm=[0, 2, 3, 1])
+
+    X_train = np.array(X_train)
+    X_test = np.array(X_test)
+
+    print(X_train.shape)
+    print(X_test.shape)
     
     # Convert labels to categorical
     y_train = to_categorical(y_train, nb_classes)
@@ -147,8 +166,18 @@ for subject in np.unique(subject_ids):
     class_weight_dict = dict(enumerate(class_weights))
     
     # Initialize and compile the model
-    model = EEGNet(nb_classes, chans, Samples=samples)
-    model.load_weights("EEGNet-8-2-weights.h5", by_name=True, skip_mismatch=True)
+
+    model = ATCNet_(nb_classes, chans, samples)
+    model.load_weights( weights_dir + "final_model_fold_5.weights.h5")
+    # model.load_weights( weights_dir + "subject-9.h5",  by_name=True, skip_mismatch=True)
+
+
+    # model = EEGNet(nb_classes, chans, samples)
+    # model.load_weights(weights_dir + "EEGNet-8-2-weights.h5", by_name=True, skip_mismatch=True)
+
+    # Initialize and compile the model
+    # model = BFN.proposed(samples, chans, nb_classes)
+    # model.load_weights(weights_dir + "pretrained_VR.h5", by_name=True, skip_mismatch=True)
 
     model.compile(
         optimizer=keras.optimizers.Adam(learning_rate=learning_rate, weight_decay=weight_decay),
@@ -170,7 +199,7 @@ for subject in np.unique(subject_ids):
         batch_size=batch_size,
         epochs=epochs,
         class_weight=class_weight_dict,
-        callbacks=callbacks,
+        # callbacks=callbacks,
         verbose=1
     )
     history_list.append(history)
@@ -188,6 +217,34 @@ for subject in np.unique(subject_ids):
     # Predict on the test set for the current fold
     y_pred_classes = np.argmax(y_pred, axis=1)
     y_test_classes = np.argmax(y_test, axis=1)
+
+
+    # Shapley Analysis
+    shap.explainers._deep.deep_tf.op_handlers["AddV2"] = shap.explainers._deep.deep_tf.passthrough  # this solves the "shap_ADDV2" problem but another one will appear
+    shap.explainers._deep.deep_tf.op_handlers["FusedBatchNormV3"] = shap.explainers._deep.deep_tf.passthrough  # this solves the next problem which allows you to run the DeepExplainer.
+    shap.explainers._deep.deep_tf.op_handlers["AddV2"] = shap.explainers._deep.deep_tf.passthrough  
+    shap.explainers._deep.deep_tf.op_handlers["FusedBatchNormV3"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
+    shap.explainers._deep.deep_tf.op_handlers["DepthwiseConv2dNative"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
+    shap.explainers._deep.deep_tf.op_handlers["BatchToSpaceND"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
+    shap.explainers._deep.deep_tf.op_handlers["SpaceToBatchND"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
+    shap.explainers._deep.deep_tf.op_handlers["Einsum"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
+    shap.explainers._deep.deep_tf.op_handlers["BatchMatMulV2"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
+    shap.explainers._deep.deep_tf.op_handlers["Neg"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
+    # Set up 300 random points for shap
+    background = np.array(X_train[np.random.choice(X_train.shape[0], 300, replace=False)])
+
+
+    print(np.shape(X_test))
+    # Create DeepExplainer model
+    e = shap.DeepExplainer(model, background)
+    print(e)
+    shap_values = e.shap_values(X_test, check_additivity=False)
+    shap_values_all.append(shap_values)
+    y_test_all.append(y_test.argmax(axis=-1))
+    y_pred_all.append(y_pred)
+    print(len(shap_values_all))
+    print(len(y_test_all))
+    print(len(y_pred_all))
 
     # Identify misclassified trials
     misclassified_indices = np.where(y_pred_classes != y_test_classes)[0]
@@ -223,6 +280,7 @@ timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 print(f"\nAverage Accuracy Across Subjects: {np.mean(accuracy_per_fold) * 100:.2f}%")
 print(f"Average Loss Across Subjects: {np.mean(loss_per_fold):.4f}")
 print(f"Average ATC Across Subjects: {np.mean(scores_atc) * 100:.2f}%")
+print(accuracy_per_fold)
 
 # Confusion Matrix and Heatmap
 conf_matrix_percent = conf_matrix_accum.astype('float') / conf_matrix_accum.sum(axis=1)[:, np.newaxis] * 100
@@ -237,3 +295,14 @@ plt.show()
 # Misclassification Analysis
 misclassification_df = pd.DataFrame(misclassification_stats_all.items(), columns=["Subject", "Misclassified Trials"])
 misclassification_df.to_csv(f"misclassifications_{timestamp}.csv", index=False)
+
+## SAVING SHAP STUFF
+
+with open("shaps_values_all_LOSO", "wb") as fp:  # Pickling
+    pickle.dump(shap_values_all, fp)
+
+with open("y_test_all_LOSO", "wb") as fp:  # Pickling
+    pickle.dump(y_test_all, fp)
+
+with open("y_pred_all_LOSO", "wb") as fp:  # Pickling
+    pickle.dump(y_pred_all, fp)
