@@ -10,7 +10,7 @@ from mne import Epochs, find_events
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1' 
 
-nSub = 20
+nSub = 33
 set_dir = './epoched/'
 
 sr = 256
@@ -47,8 +47,7 @@ subject_ids = []
 chan2drop = ["T7", "T8", 'FT7', 'FT8']
 chan2use = ['C3', 'O1', 'O2']
 
-
-
+# Re-label data
 for group, files in subject_files.items():
     group_label = group_labels[group]
     for file, subject_num in zip(files, subjects):
