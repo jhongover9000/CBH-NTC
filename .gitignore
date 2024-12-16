@@ -3,5 +3,5 @@
 
 .DS_Store
 *.npz
-*shap*
-*Shap*
+*shap*.np*
+*Shap*.np*
