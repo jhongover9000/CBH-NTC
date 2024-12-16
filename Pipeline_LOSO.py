@@ -43,7 +43,7 @@ print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('
 weights_dir = "./Weights/"
 
 # Load Data
-data = np.load("subject_data_v4.npz")
+data = np.load("subject_data_v5.npz")
 X = data['X']
 y = data['y']
 subject_ids = data['subject_ids']
@@ -99,7 +99,7 @@ def plot_training_history(history, timestamp):
 # ==================================================================================================
 # LOSO Cross-Validation
 n_splits = len(np.unique(subject_ids))  # Number of subjects
-epochs = 90
+epochs = 70
 batch_size = 16
 learning_rate = 0.00005
 weight_decay = 0.01
@@ -168,8 +168,8 @@ for subject in np.unique(subject_ids):
     # Initialize and compile the model
 
     model = ATCNet_(nb_classes, chans, samples)
-    model.load_weights( weights_dir + "final_model_fold_5.weights.h5")
-    # model.load_weights( weights_dir + "subject-9.h5",  by_name=True, skip_mismatch=True)
+    # model.load_weights( weights_dir + "EEGNet-8-2-weights.h5")
+    model.load_weights( weights_dir + "subject-9.h5",  by_name=True, skip_mismatch=True)
 
 
     # model = EEGNet(nb_classes, chans, samples)
@@ -220,31 +220,31 @@ for subject in np.unique(subject_ids):
 
 
     # Shapley Analysis
-    shap.explainers._deep.deep_tf.op_handlers["AddV2"] = shap.explainers._deep.deep_tf.passthrough  # this solves the "shap_ADDV2" problem but another one will appear
-    shap.explainers._deep.deep_tf.op_handlers["FusedBatchNormV3"] = shap.explainers._deep.deep_tf.passthrough  # this solves the next problem which allows you to run the DeepExplainer.
-    shap.explainers._deep.deep_tf.op_handlers["AddV2"] = shap.explainers._deep.deep_tf.passthrough  
-    shap.explainers._deep.deep_tf.op_handlers["FusedBatchNormV3"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
-    shap.explainers._deep.deep_tf.op_handlers["DepthwiseConv2dNative"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
-    shap.explainers._deep.deep_tf.op_handlers["BatchToSpaceND"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
-    shap.explainers._deep.deep_tf.op_handlers["SpaceToBatchND"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
-    shap.explainers._deep.deep_tf.op_handlers["Einsum"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
-    shap.explainers._deep.deep_tf.op_handlers["BatchMatMulV2"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
-    shap.explainers._deep.deep_tf.op_handlers["Neg"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
-    # Set up 300 random points for shap
-    background = np.array(X_train[np.random.choice(X_train.shape[0], 300, replace=False)])
+    # shap.explainers._deep.deep_tf.op_handlers["AddV2"] = shap.explainers._deep.deep_tf.passthrough  # this solves the "shap_ADDV2" problem but another one will appear
+    # shap.explainers._deep.deep_tf.op_handlers["FusedBatchNormV3"] = shap.explainers._deep.deep_tf.passthrough  # this solves the next problem which allows you to run the DeepExplainer.
+    # shap.explainers._deep.deep_tf.op_handlers["AddV2"] = shap.explainers._deep.deep_tf.passthrough  
+    # shap.explainers._deep.deep_tf.op_handlers["FusedBatchNormV3"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
+    # shap.explainers._deep.deep_tf.op_handlers["DepthwiseConv2dNative"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
+    # shap.explainers._deep.deep_tf.op_handlers["BatchToSpaceND"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
+    # shap.explainers._deep.deep_tf.op_handlers["SpaceToBatchND"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
+    # shap.explainers._deep.deep_tf.op_handlers["Einsum"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
+    # shap.explainers._deep.deep_tf.op_handlers["BatchMatMulV2"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
+    # shap.explainers._deep.deep_tf.op_handlers["Neg"] = shap.explainers._deep.deep_tf.passthrough #this solves the next problem which allows you to run the DeepExplainer.  
+    # # Set up 300 random points for shap
+    # background = np.array(X_train[np.random.choice(X_train.shape[0], 300, replace=False)])
 
 
-    print(np.shape(X_test))
-    # Create DeepExplainer model
-    e = shap.DeepExplainer(model, background)
-    print(e)
-    shap_values = e.shap_values(X_test, check_additivity=False)
-    shap_values_all.append(shap_values)
-    y_test_all.append(y_test.argmax(axis=-1))
-    y_pred_all.append(y_pred)
-    print(len(shap_values_all))
-    print(len(y_test_all))
-    print(len(y_pred_all))
+    # print(np.shape(X_test))
+    # # Create DeepExplainer model
+    # e = shap.DeepExplainer(model, background)
+    # print(e)
+    # shap_values = e.shap_values(X_test, check_additivity=False)
+    # shap_values_all.append(shap_values)
+    # y_test_all.append(y_test.argmax(axis=-1))
+    # y_pred_all.append(y_pred)
+    # print(len(shap_values_all))
+    # print(len(y_test_all))
+    # print(len(y_pred_all))
 
     # Identify misclassified trials
     misclassified_indices = np.where(y_pred_classes != y_test_classes)[0]
@@ -298,11 +298,11 @@ misclassification_df.to_csv(f"misclassifications_{timestamp}.csv", index=False)
 
 ## SAVING SHAP STUFF
 
-with open("shaps_values_all_LOSO", "wb") as fp:  # Pickling
-    pickle.dump(shap_values_all, fp)
+# with open("shaps_values_all_LOSO", "wb") as fp:  # Pickling
+#     pickle.dump(shap_values_all, fp)
 
-with open("y_test_all_LOSO", "wb") as fp:  # Pickling
-    pickle.dump(y_test_all, fp)
+# with open("y_test_all_LOSO", "wb") as fp:  # Pickling
+#     pickle.dump(y_test_all, fp)
 
-with open("y_pred_all_LOSO", "wb") as fp:  # Pickling
-    pickle.dump(y_pred_all, fp)
+# with open("y_pred_all_LOSO", "wb") as fp:  # Pickling
+#     pickle.dump(y_pred_all, fp)

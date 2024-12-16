@@ -61,7 +61,7 @@ for group, files in subject_files.items():
         epochs = epochs.drop_channels(chan2drop)
 
         # Pick specific channels: C3, O1, O2 (if needed)
-        # epochs = epochs.pick_channels(chan2use)
+        epochs = epochs.pick_channels(chan2use)
 
 
         print("Channels after dropping:", epochs.info['ch_names'])
@@ -90,7 +90,7 @@ print(y.shape)
 print("Done Preprocessing Subjects.")
 
 # # Save data and labels to a file
-save_path = "subject_data_v4.npz"  # Specify your desired file path
+save_path = "subject_data_v5.npz"  # Specify your desired file path
 np.savez(save_path, X=X, y=y, subject_ids = subject_ids)
 
 print(f"Data saved to {save_path}.")
