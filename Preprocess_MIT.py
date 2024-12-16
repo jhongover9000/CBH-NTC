@@ -12,10 +12,11 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
 nSub = 33
 set_dir = './epoched/'
+data_name = "mit_v2"
 
 sr = 256
-start_time = 0  # Start time in seconds (relative to the epoch start)
-end_time = 3
+start_time = -1  # Start time in seconds (relative to the epoch start)
+end_time = 2
 
 # num_timepoints = 400  # Number of time points to keep
 # end_time = start_time + (num_timepoints - 1) / freq
@@ -23,7 +24,7 @@ end_time = 3
 print("Preprocessing Subjects...")
 
 # Split subjects NT and ST data
-subs_all = list(range(1,nSub))
+subs_all = list(range(1,nSub+1))
 
 files_nt = []
 files_st = []
@@ -50,6 +51,7 @@ chan2use = ['C3', 'O1', 'O2']
 # Re-label data
 for group, files in subject_files.items():
     group_label = group_labels[group]
+    subjects = subs_all
     for file, subject_num in zip(files, subjects):
         epochs = read_epochs_eeglab(file)
 
@@ -60,7 +62,7 @@ for group, files in subject_files.items():
         # epochs = epochs.pick_channels(chan2use)
         print("Channels after dropping:", epochs.info['ch_names'])
 
-        # Downsample to 100 Hz (400 timepoints for 4 seconds)
+        # Resample to designated Sampling Rate
         epochs = epochs.resample(sr, verbose=True)
 
         # Crop timeframe
@@ -86,7 +88,7 @@ print(y.shape)
 print("Done Preprocessing Subjects.")
 
 # # Save data and labels to a file
-save_path = "subject_data_v4.npz"  # Specify your desired file path
+save_path = f"subject_data_{data_name}.npz"  # Specify your desired file path
 np.savez(save_path, X=X, y=y, subject_ids = subject_ids)
 
 print(f"Data saved to {save_path}.")

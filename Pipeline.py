@@ -44,9 +44,10 @@ print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('
 
 weights_dir = "./Weights/"
 
+data_name = "mit_v2"
 
 # Load Data
-data = np.load("subject_data_v4.npz")
+data = np.load("subject_data_"+ data_name +".npz")
 X = data['X']
 y = data['y']
 subject_ids = data['subject_ids']
@@ -150,7 +151,7 @@ for fold_number, (train_index, test_index) in enumerate(skf.split(X, y), 1):
     print(f"Processing Fold {fold_number}...")
 
     # Save the fold indices to a .npz file
-    np.savez(f"fold_{fold_number}_indices.npz", train_index=train_index, test_index=test_index)
+    np.savez(f"fold_{fold_number}_indices_{data_name}.npz", train_index=train_index, test_index=test_index)
     
     
     # Split the data
@@ -203,7 +204,7 @@ for fold_number, (train_index, test_index) in enumerate(skf.split(X, y), 1):
     callbacks = [
         EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True),
         ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=0.00005),
-        ModelCheckpoint(f"best_model_fold_{fold_number}.weights.h5",
+        ModelCheckpoint(f"{data_name}_best_model_fold_{fold_number}.weights.h5",
                         monitor='val_loss',
                         # save_best_only=True,
                         save_weights_only=True)
@@ -220,7 +221,7 @@ for fold_number, (train_index, test_index) in enumerate(skf.split(X, y), 1):
         verbose=1
     )
     history_list.append(history)
-    model.save_weights(f"final_model_fold_{fold_number}.weights.h5")
+    model.save_weights(f"{data_name}_final_model_fold_{fold_number}.weights.h5")
     
     # Evaluate the model
     scores = model.evaluate(X_test, y_test, verbose=1)
@@ -319,7 +320,7 @@ for fold, trials in enumerate(misclassified_trials_per_fold, start=1):
     print(fold_df)
 
     # Save the per-fold statistics to a CSV
-    fold_csv_file = f"misclassified_trials_fold_{fold}_{timestamp}.csv"
+    fold_csv_file = f"{data_name}_misclassified_trials_fold_{fold}_{timestamp}.csv"
     fold_df.to_csv(fold_csv_file)
     print(f"Fold {fold} misclassification statistics saved to {fold_csv_file}.")
 
@@ -328,7 +329,7 @@ for fold, trials in enumerate(misclassified_trials_per_fold, start=1):
 
 # Plot Training History
 for fold, history in enumerate(history_list, 1):
-    plot_training_history(history, f"fold_{fold}_{timestamp}")
+    plot_training_history(history, f"{data_name}_fold_{fold}_{timestamp}")
 
 # Compute average confusion matrix
 conf_matrix_avg = conf_matrix_accum / n_splits
@@ -354,7 +355,7 @@ plt.ylabel('True Label')
 plt.xlabel('Predicted Label')
 
 # Save the figure
-fig_file = f"matrix/con_matrix_{timestamp}.png"
+fig_file = f"matrix/con_matrix_{data_name}_{timestamp}.png"
 plt.savefig(fig_file)
 
 # Show the plot
@@ -362,11 +363,11 @@ plt.show()
 
 ## SAVING SHAP STUFF
 
-with open("shaps_values_all_full", "wb") as fp:  # Pickling
+with open(f"shaps_values_{data_name}_full", "wb") as fp:  # Pickling
     pickle.dump(shap_values_all, fp)
 
-with open("y_test_all_full", "wb") as fp:  # Pickling
+with open(f"y_test_{data_name}_full", "wb") as fp:  # Pickling
     pickle.dump(y_test_all, fp)
 
-with open("y_pred_all_full", "wb") as fp:  # Pickling
+with open(f"y_pred_{data_name}_full", "wb") as fp:  # Pickling
     pickle.dump(y_pred_all, fp)
