@@ -12,6 +12,7 @@ import seaborn as sns
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import RobustScaler
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.utils.class_weight import compute_class_weight
 import tensorflow as tf
@@ -44,7 +45,7 @@ print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('
 
 weights_dir = "./Weights/"
 
-data_name = "mit_v2"
+data_name = "mit_v4"
 
 # Load Data
 data = np.load("subject_data_"+ data_name +".npz")
@@ -72,9 +73,10 @@ def scaler_fit_transform(X_train, X_test):
     X_train_scaled = np.zeros_like(X_train)
     X_test_scaled = np.zeros_like(X_test)
 
-    scaler = StandardScaler()
+    # scaler = StandardScaler()
+    scaler = RobustScaler()
 
-    for i in range(n_channels):  # Iterate over each channel
+    for i in range(n_channels):  # Iterate over each channel)
         # Fit scaler on the training data for this channel
         scaler.fit(X_train[:, i, :])
         # Transform both training and test data for this channel
@@ -190,7 +192,7 @@ for fold_number, (train_index, test_index) in enumerate(skf.split(X, y), 1):
     model = ATCNet_(nb_classes, chans, samples)
     model.load_weights( weights_dir + "subject-9.h5",  by_name=True, skip_mismatch=True)
 
-    # model = EEGNet(nb_classes, chans, Samples = samples)
+    # model = DeepConvNet(nb_classes, chans, Samples = samples)
     # model.load_weights( weights_dir + "EEGNet-8-2-weights.h5",  by_name=True, skip_mismatch=True)
 
 
@@ -216,7 +218,7 @@ for fold_number, (train_index, test_index) in enumerate(skf.split(X, y), 1):
         validation_data=(X_test, y_test),
         batch_size=batch_size,
         epochs=epochs,
-        class_weight=class_weight_dict,
+        # class_weight=class_weight_dict,
         # callbacks=callbacks,
         verbose=1
     )

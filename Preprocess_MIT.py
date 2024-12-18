@@ -12,10 +12,10 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 
 nSub = 33
 set_dir = './epoched/'
-data_name = "mit_v2"
+data_name = "mit_v4"
 
 sr = 256
-start_time = -1  # Start time in seconds (relative to the epoch start)
+start_time = 0  # Start time in seconds (relative to the epoch start)
 end_time = 2
 
 # num_timepoints = 400  # Number of time points to keep
@@ -45,7 +45,7 @@ group_labels = {'NT': 0, 'ST': 1}
 all_data = []
 all_labels = []
 subject_ids = []
-chan2drop = ["T7", "T8", 'FT7', 'FT8']
+chan2drop = ['Fp1','Fp2','FT7', 'FT8','AF7','AF8','F7','F8','T7','T8','TP7','TP8','P7','P8','PO7','PO8','O1','O2','Oz']
 chan2use = ['C3', 'O1', 'O2']
 
 # Re-label data
