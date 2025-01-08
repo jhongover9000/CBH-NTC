@@ -1,0 +1,81 @@
+import numpy as np
+import mne
+from sklearn.svm import SVC
+from sklearn.model_selection import cross_val_score, LeaveOneGroupOut
+from sklearn.pipeline import Pipeline
+from mne.decoding import CSP
+from deap import base, creator, tools, algorithms  # For GA
+import random
+
+# Load EEG Dataset (Example MNE Data)
+# Replace this with your own EEG data
+def load_data():
+    data_path = mne.datasets.sample.data_path()
+    raw = mne.io.read_raw_fif(data_path + '/MEG/sample/sample_audvis_raw.fif', preload=True)
+    raw.filter(8., 30., fir_design='firwin')  # Bandpass filter (Alpha-Beta range)
+    events = mne.find_events(raw, stim_channel='STI 014')
+    
+    # Define event IDs and epochs
+    event_id = {'left_hand': 1, 'right_hand': 2}  # Update with MI tasks
+    tmin, tmax = 0., 2.  # Time window
+    epochs = mne.Epochs(raw, events, event_id, tmin, tmax, preload=True, baseline=None)
+    X = epochs.get_data()  # EEG data (n_trials, n_channels, n_times)
+    y = epochs.events[:, -1]  # Labels
+    groups = np.array([i // (len(y) // 10) for i in range(len(y))])  # Grouping for cross-validation
+    return X, y, groups, epochs.ch_names
+
+# GA-Based Channel Selection
+def evaluate_channel_combination(ch_indices, X, y, groups, channels):
+    selected_channels = np.array(channels)[ch_indices]
+    X_selected = X[:, ch_indices, :]
+    
+    # CSP + SVM pipeline
+    csp = CSP(n_components=4, reg=None, log=True, transform_into='csp_space')
+    clf = SVC(kernel='rbf', C=1)
+    pipeline = Pipeline([('CSP', csp), ('SVM', clf)])
+    
+    # Cross-validation
+    logo = LeaveOneGroupOut()
+    scores = cross_val_score(pipeline, X_selected, y, groups=groups, cv=logo, n_jobs=-1)
+    return np.mean(scores),
+
+def genetic_algorithm(X, y, groups, channels, n_generations=10, population_size=20):
+    n_channels = len(channels)
+    
+    # Define fitness and individual
+    creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+    creator.create("Individual", list, fitness=creator.FitnessMax)
+    toolbox = base.Toolbox()
+    
+    # Individual: Random binary mask for channel selection
+    toolbox.register("attr_bool", random.randint, 0, 1)
+    toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_bool, n_channels)
+    toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+    
+    # Evaluation function
+    def eval_func(individual):
+        selected_channels = [i for i, val in enumerate(individual) if val]
+        if len(selected_channels) < 2:  # Require at least 2 channels
+            return 0.0,
+        return evaluate_channel_combination(selected_channels, X, y, groups, channels)
+    
+    toolbox.register("mate", tools.cxTwoPoint)
+    toolbox.register("mutate", tools.mutFlipBit, indpb=0.05)
+    toolbox.register("select", tools.selTournament, tournsize=3)
+    toolbox.register("evaluate", eval_func)
+    
+    # GA Execution
+    pop = toolbox.population(n=population_size)
+    algorithms.eaSimple(pop, toolbox, cxpb=0.5, mutpb=0.2, ngen=n_generations, verbose=True)
+    
+    # Best individual
+    best_ind = tools.selBest(pop, 1)[0]
+    selected_channels = [channels[i] for i, val in enumerate(best_ind) if val]
+    print("Best channel combination:", selected_channels)
+
+if __name__ == "__main__":
+    # Load data
+    X, y, groups, channels = load_data()
+    
+    # Run GA for channel selection
+    genetic_algorithm(X, y, groups, channels)
