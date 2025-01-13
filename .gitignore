@@ -11,3 +11,7 @@ y_pred_mit_v2_full
 y_pred_mit_v3_full
 y_test_mit_v2_full
 y_test_mit_v3_full
+EEGNet-V3/shaps_values_all_full
+EEGNet-V4/shaps_values_all_full
+ATC-V2/shaps_values_all_full
+ATC-V1/shaps_values_all_full
