@@ -43,9 +43,11 @@ print("Num GPUs Available: ", len(tf.config.experimental.list_physical_devices('
 weights_dir = "./Weights/"
 
 # Load Data
-data = np.load("subject_data_v5.npz")
+data = np.load("subject_data_v4.npz")
+labels = np.load("generated_labels.npy")
+print(labels)
 X = data['X']
-y = data['y']
+y = labels
 subject_ids = data['subject_ids']
 print(f"Data loaded. X shape: {X.shape}, y shape: {y.shape}, Subject IDs: {subject_ids.shape}")
 
@@ -130,6 +132,19 @@ print("Starting Training...")
 for subject in np.unique(subject_ids):
     print(f"Processing Subject {subject}...")
 
+    # Initialize and compile the model
+
+    model = ATCNet_(nb_classes, chans, samples)
+    model.load_weights( weights_dir + "subject-9.h5",  by_name=True, skip_mismatch=True)
+
+
+    # model = EEGNet(nb_classes, chans, samples)
+    # model.load_weights(weights_dir + "EEGNet-8-2-weights.h5", by_name=True, skip_mismatch=True)
+
+    # Initialize and compile the model
+    # model = BFN.proposed(samples, chans, nb_classes)
+    # model.load_weights(weights_dir + "pretrained_VR.h5", by_name=True, skip_mismatch=True)
+
     # Define the train and test splits for this fold (leave one subject out)
     test_index = np.where(subject_ids == subject)[0]
     train_index = np.where(subject_ids != subject)[0]
@@ -165,19 +180,7 @@ for subject in np.unique(subject_ids):
     class_weights = compute_class_weight('balanced', classes=np.unique(y[train_index]), y=y[train_index])
     class_weight_dict = dict(enumerate(class_weights))
     
-    # Initialize and compile the model
-
-    model = ATCNet_(nb_classes, chans, samples)
-    # model.load_weights( weights_dir + "EEGNet-8-2-weights.h5")
-    model.load_weights( weights_dir + "subject-9.h5",  by_name=True, skip_mismatch=True)
-
-
-    # model = EEGNet(nb_classes, chans, samples)
-    # model.load_weights(weights_dir + "EEGNet-8-2-weights.h5", by_name=True, skip_mismatch=True)
-
-    # Initialize and compile the model
-    # model = BFN.proposed(samples, chans, nb_classes)
-    # model.load_weights(weights_dir + "pretrained_VR.h5", by_name=True, skip_mismatch=True)
+    
 
     model.compile(
         optimizer=keras.optimizers.Adam(learning_rate=learning_rate, weight_decay=weight_decay),
@@ -270,9 +273,9 @@ for subject in np.unique(subject_ids):
 
     # ==================================================================================================
     # Clear memory after each fold
-    del model  # Delete model to free memory
-    K.clear_session()  # Clear Keras session to free up resources
-    gc.collect()  # Run garbage collection to clean up any residual memory usage
+    # del model  # Delete model to free memory
+    # K.clear_session()  # Clear Keras session to free up resources
+    # gc.collect()  # Run garbage collection to clean up any residual memory usage
 
 # ==================================================================================================
 # Model Evaluation and Visualization

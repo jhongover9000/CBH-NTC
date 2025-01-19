@@ -30,13 +30,13 @@ y = npz_data['y']  # Labels (unlabeled or partially labeled)
 subject_ids = npz_data['subject_ids']  # Subject IDs
 
 sfreq = 256  # Assumed sampling frequency (modify if needed)
-freq_bands = {'mu': (8, 13), 'beta': (13, 30)}
+freq_bands = {'mu': (6, 28)}
 
 # Define channels of interest
 kmi_channels = ["C3", "C4", "Cz"]
 vmi_channels = ["O1", "O2", "Pz"]
 channel_names = epochs.info['ch_names']  # Placeholder names, replace with actual
-
+channels = [i for i, ch in enumerate(channel_names)]
 kmi_indices = [i for i, ch in enumerate(channel_names) if ch in kmi_channels]
 vmi_indices = [i for i, ch in enumerate(channel_names) if ch in vmi_channels]
 
@@ -50,48 +50,112 @@ def compute_band_power(X, band, sfreq, channels):
     if psd.shape[1] == 0:  # No frequency bins found
         raise ValueError(f"No frequencies found in range {band}. Check fmin, fmax, and sfreq.")
 
-    return np.mean(psd[:, channels, :], axis=2)  # Mean across time dimension
+    return psd[:, channels, :]  # Mean across time dimension
 
 # Perform rule-based labeling per subject using baseline normalization
 rule_based_labels = np.full(len(y), -1)  # Initialize with -1 (unlabeled)
 
+# Ruleset Labeling
+# for subject in np.unique(subject_ids):
+#     subject_mask = subject_ids == subject
+#     X_subject = X[subject_mask]
+#     print(f"Subject {subject} - Trials: {X_subject.shape[0]}")
+
+#     # Compute baseline for the first second (-1 to onset)
+#     baseline_mu_kmi = compute_band_power(X_subject[:, :, :256], freq_bands['mu'], sfreq, kmi_indices).mean(axis=2)
+#     baseline_beta_kmi = compute_band_power(X_subject[:, :, :256], freq_bands['beta'], sfreq, kmi_indices).mean(axis=2)
+    
+#     baseline_mu_vmi = compute_band_power(X_subject[:, :, :256], freq_bands['mu'], sfreq, vmi_indices).mean(axis=2)
+#     baseline_beta_vmi = compute_band_power(X_subject[:, :, :256], freq_bands['beta'], sfreq, vmi_indices).mean(axis=2)
+
+#     print(f"Baseline Mu KMI shape: {baseline_mu_kmi.shape}, Values: {baseline_mu_kmi[:5]}")
+#     print(f"Baseline Beta KMI shape: {baseline_beta_kmi.shape}, Values: {baseline_beta_kmi[:5]}")
+
+#     mu_power_kmi = compute_band_power(X_subject[:, :, 256:], freq_bands['mu'], sfreq, kmi_indices).mean(axis=2)
+#     beta_power_kmi = compute_band_power(X_subject[:, :, 256:], freq_bands['beta'], sfreq, kmi_indices).mean(axis=2)
+#     mu_power_vmi = compute_band_power(X_subject[:, :, 256:], freq_bands['mu'], sfreq, vmi_indices).mean(axis=2)
+#     beta_power_vmi = compute_band_power(X_subject[:, :, 256:], freq_bands['beta'], sfreq, vmi_indices).mean(axis=2)
+    
+#     # Criteria for KMI vs VMI: if KMI channels are ERD and VMI channels are either ERS or ERD?
+#     # VMI: if VMI channels are ERS, and there is "light" ERD -- how would this look?
+#     erd_kmi = (mu_power_kmi < baseline_mu_kmi) & (beta_power_kmi < baseline_beta_kmi)
+#     ers_vmi = (mu_power_vmi > baseline_mu_vmi) & (beta_power_vmi > baseline_beta_vmi)
+#     erd_kmi = erd_kmi.mean(axis=1)
+#     ers_vmi = ers_vmi.mean(axis=1)
+
+#     print(f"erd_kmi shape: {erd_kmi.shape}, ers_vmi shape: {ers_vmi.shape}")
+
+#     rule_based_labels[subject_mask] = np.where(erd_kmi, 0, np.where(ers_vmi, 1, -1))
+
+# unlabeled_mask = rule_based_labels == -1
+# if np.any(unlabeled_mask):
+#     features = np.hstack([compute_band_power(X, freq_bands['mu'], sfreq, kmi_indices),
+#                            compute_band_power(X, freq_bands['beta'], sfreq, kmi_indices)])
+#     scaler = StandardScaler()
+#     features_scaled = scaler.fit_transform(features)
+#     y_pred = KMeans(n_clusters=2, random_state=42, n_init=10).fit_predict(features_scaled)
+#     rule_based_labels[unlabeled_mask] = y_pred[unlabeled_mask]
+
+## Subject-Level Clustering - ERD/ERS Comp
+# for subject in np.unique(subject_ids):
+#     subject_mask = subject_ids == subject
+#     X_subject = X[subject_mask]
+
+#     # Compute baseline power for each band
+#     baseline_mu_kmi = compute_band_power(X_subject[:, :, :256], freq_bands['mu'], sfreq, kmi_indices).mean(axis=2)
+#     baseline_beta_kmi = compute_band_power(X_subject[:, :, :256], freq_bands['beta'], sfreq, kmi_indices).mean(axis=2)
+#     baseline_mu_vmi = compute_band_power(X_subject[:, :, :256], freq_bands['mu'], sfreq, vmi_indices).mean(axis=2)
+#     baseline_beta_vmi = compute_band_power(X_subject[:, :, :256], freq_bands['beta'], sfreq, vmi_indices).mean(axis=2)
+
+#     # Compute post-stimulus power
+#     mu_power_kmi = compute_band_power(X_subject[:, :, 256:], freq_bands['mu'], sfreq, kmi_indices).mean(axis=2)
+#     beta_power_kmi = compute_band_power(X_subject[:, :, 256:], freq_bands['beta'], sfreq, kmi_indices).mean(axis=2)
+#     mu_power_vmi = compute_band_power(X_subject[:, :, 256:], freq_bands['mu'], sfreq, vmi_indices).mean(axis=2)
+#     beta_power_vmi = compute_band_power(X_subject[:, :, 256:], freq_bands['beta'], sfreq, vmi_indices).mean(axis=2)
+
+#     # Compute ERD/ERS
+#     erd_kmi = (mu_power_kmi < baseline_mu_kmi) & (beta_power_kmi < baseline_beta_kmi)
+#     ers_vmi = (mu_power_vmi > baseline_mu_vmi) & (beta_power_vmi > baseline_beta_vmi)
+
+#     # Feature matrix (concatenate ERD/ERS for clustering)
+#     features = np.hstack([mu_power_kmi - baseline_mu_kmi,
+#                           beta_power_kmi - baseline_beta_kmi,
+#                           mu_power_vmi - baseline_mu_vmi,
+#                           beta_power_vmi - baseline_beta_vmi])
+
+#     # Normalize features
+#     scaler = StandardScaler()
+#     features_scaled = scaler.fit_transform(features)
+
+#     # Apply K-means clustering (2 clusters: one for ERD-KMI, one for ERS-VMI)
+#     kmeans = KMeans(n_clusters=2, random_state=42, n_init=10)
+#     cluster_labels = kmeans.fit_predict(features_scaled)
+
+#     # Assign rule-based labels
+#     rule_based_labels[subject_mask] = np.where(erd_kmi, 0, np.where(ers_vmi, 1, cluster_labels))
+
+### Clustering Subject Level - Raw Features Comp
 for subject in np.unique(subject_ids):
     subject_mask = subject_ids == subject
     X_subject = X[subject_mask]
-    print(f"Subject {subject} - Trials: {X_subject.shape[0]}")
 
-    # Compute baseline for the first second (-1 to onset)
-    baseline_mu_kmi = compute_band_power(X_subject[:, :, :250], freq_bands['mu'], sfreq, kmi_indices)
-    baseline_beta_kmi = compute_band_power(X_subject[:, :, :250], freq_bands['beta'], sfreq, kmi_indices)
-    
-    baseline_mu_vmi = compute_band_power(X_subject[:, :, :250], freq_bands['mu'], sfreq, vmi_indices)
-    baseline_beta_vmi = compute_band_power(X_subject[:, :, :250], freq_bands['beta'], sfreq, vmi_indices)
+    # Compute power features over the full trial (not just ERD/ERS)
+    mu_power_kmi = compute_band_power(X_subject, freq_bands['mu'], sfreq, channels).mean(axis=2)
+    # beta_power_kmi = compute_band_power(X_subject, freq_bands['beta'], sfreq, channels).mean(axis=2)
 
-    print(f"Baseline Mu KMI shape: {baseline_mu_kmi.shape}, Values: {baseline_mu_kmi[:5]}")
-    print(f"Baseline Beta KMI shape: {baseline_beta_kmi.shape}, Values: {baseline_beta_kmi[:5]}")
+    # Feature matrix (concatenate band power)
+    features = np.hstack([mu_power_kmi])
 
-    mu_power_kmi = compute_band_power(X_subject[:, :, 256:], freq_bands['mu'], sfreq, kmi_indices).mean(axis=0)
-    beta_power_kmi = compute_band_power(X_subject[:, :, 256:], freq_bands['beta'], sfreq, kmi_indices).mean(axis=0)
-    mu_power_vmi = compute_band_power(X_subject[:, :, 256:], freq_bands['mu'], sfreq, vmi_indices).mean(axis=0)
-    beta_power_vmi = compute_band_power(X_subject[:, :, 256:], freq_bands['beta'], sfreq, vmi_indices).mean(axis=0)
-    
-    erd_kmi = (mu_power_kmi < baseline_mu_kmi) & (beta_power_kmi < baseline_beta_kmi)
-    ers_vmi = (mu_power_vmi > baseline_mu_vmi) & (beta_power_vmi > baseline_beta_vmi)
-    erd_kmi = erd_kmi.mean(axis=1)
-    ers_vmi = ers_vmi.mean(axis=1)
-
-    print(f"erd_kmi shape: {erd_kmi.shape}, ers_vmi shape: {ers_vmi.shape}")
-
-    rule_based_labels[subject_mask] = np.where(erd_kmi, 0, np.where(ers_vmi, 1, -1))
-
-unlabeled_mask = rule_based_labels == -1
-if np.any(unlabeled_mask):
-    features = np.hstack([compute_band_power(X, freq_bands['mu'], sfreq, range(56)),
-                           compute_band_power(X, freq_bands['beta'], sfreq, range(56))])
+    # Normalize features
     scaler = StandardScaler()
-    features_scaled = scaler.fit_transform(features)
-    y_pred = KMeans(n_clusters=2, random_state=42, n_init=10).fit_predict(features_scaled)
-    rule_based_labels[unlabeled_mask] = y_pred[unlabeled_mask]
+    features_scaled = scaler.fit_transform(mu_power_kmi)
+
+    # Apply K-means clustering (2 clusters)
+    kmeans = KMeans(n_clusters=2, random_state=42, n_init=10)
+    cluster_labels = kmeans.fit_predict(features_scaled)
+
+    # Assign labels based on clusters
+    rule_based_labels[subject_mask] = cluster_labels
 
 # rus = RandomUnderSampler(random_state=42)
 # X_flat = X.reshape(X.shape[0], -1)  # Flatten EEG trials for resampling
@@ -108,12 +172,12 @@ X_bal = X  # No resampling needed
 y_bal = rule_based_labels
 
 # Display labeling and balancing results
-print("Cluster label distribution before balancing:", np.unique(y_pred, return_counts=True))
+# print("Cluster label distribution before balancing:", np.unique(y_pred, return_counts=True))
 print("Cluster label distribution after balancing:", np.unique(y_bal, return_counts=True))
-print("Mean mu power for each cluster:", [np.mean(mu_power_kmi),np.mean(mu_power_vmi)])
-print("Mean beta power for each cluster:", [np.mean(beta_power_kmi),np.mean(beta_power_vmi)])
+print("Mean mu power for each cluster:", [np.mean(mu_power_kmi)])
+# print("Mean beta power for each cluster:", [np.mean(beta_power_kmi)])
 
-np.save("generated_labels_balanced.npy", y_bal)
+np.save("generated_labels_balanced_v3.npy", y_bal)
 
 use_csp = True
 use_svm = True
@@ -122,7 +186,7 @@ logo = LeaveOneGroupOut()
 accuracies = []
 conf_matrices = []
 
-for train_idx, test_idx in logo.split(X_bal, y_bal, groups=subject_ids[rus.sample_indices_]):
+for train_idx, test_idx in logo.split(X_bal, y_bal, groups=subject_ids):
     X_train, X_test = X_bal[train_idx], X_bal[test_idx]
     y_train, y_test = y_bal[train_idx], y_bal[test_idx]
 
