@@ -177,7 +177,7 @@ print("Cluster label distribution after balancing:", np.unique(y_bal, return_cou
 print("Mean mu power for each cluster:", [np.mean(mu_power_kmi)])
 # print("Mean beta power for each cluster:", [np.mean(beta_power_kmi)])
 
-np.save("generated_labels_balanced_v3.npy", y_bal)
+np.save("generated_labels_balanced_v4.npy", y_bal)
 
 use_csp = True
 use_svm = True
